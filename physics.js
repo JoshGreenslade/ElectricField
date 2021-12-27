@@ -1,8 +1,12 @@
 var charges
+var canvasProperties
 var lastTime = 0
-const smallestPassingDistanceSquared = 1 ** 2
+
+const trailLength = 250
+const smallestPassingDistanceSquared = 10 ** 2
 const k = 10
-const subSteps = 10
+const subSteps = 1000
+const friction = 1
 
 function getFieldVector(x, y) {
     // Get the field vector and strength at an abritrary position
@@ -41,14 +45,31 @@ function updateCharges(){
             fieldVector = getFieldVector(charge.x, charge.y)
             charge.vx += fieldVector.x * charge.q * dt
             charge.vy += fieldVector.y * charge.q * dt
+
+            // Limit to a maximum speed
+            if (Math.abs(charge.vx) > 100) charge.vx *= 0.99999
+            if (Math.abs(charge.vy) > 100) charge.vy *= 0.99999
+
             charge.x += charge.vx * dt
             charge.y += charge.vy * dt
         }
+    }
+
+    // Add to the trail
     for (var charge of charges) {
-        charge.vx *= 0.9999
-        charge.vy *= 0.9999
+        charge.trail.push({
+            x: charge.x,
+            y: charge.y
+        })
+        if (charge.trail.length > trailLength) charge.trail = charge.trail.slice(charge.trail.length - trailLength)
     }
+
+    // Friction
+    for (var charge of charges) {
+        charge.vx *= friction
+        charge.vy *= friction
     }
+    
 
     _walls()
 }
@@ -56,21 +77,21 @@ function updateCharges(){
 function _walls() {
     // Temp walls function
     for (var charge of charges) {
-        if (charge.x >= 300) {
+        if (charge.x >= canvasProperties['width']) {
             charge.vx = -1* charge.vx
-            charge.x = 300
+            charge.x = 2*canvasProperties['width'] - charge.x 
         }
         if (charge.x <= 0) {
             charge.vx = -1* charge.vx
-            charge.x = 0
+            charge.x = 0 - charge.x
         }
-        if (charge.y >= 300) {
+        if (charge.y >= canvasProperties['height']) {
             charge.vy = -1* charge.vy
-            charge.y = 300
+            charge.y = 2*canvasProperties['height'] - charge.y
         }
         if (charge.y <= 0) {
             charge.vy = -1* charge.vy
-            charge.y = 0
+            charge.y = 0 - charge.y
         }
     }
 }
@@ -86,5 +107,6 @@ function loop() {
 
 onmessage = function (e) {
     charges = e.data.charges
+    canvasProperties = e.data.canvasProperties
     loop()
 }

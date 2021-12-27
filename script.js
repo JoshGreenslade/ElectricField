@@ -1,6 +1,6 @@
 // Constants
-const charge = 500
-const pixPerCell = 5
+const charge = 800
+const pixPerCell = 4
 const canvasWidth = 400
 const canvasHeight = 400
 
@@ -27,8 +27,8 @@ var renderWorker = new Worker('/renderer.js')
 
 
 // Get the position of the top left of the canvas
-canvas_left = canvas.offsetLeft
-canvas_top = canvas.offsetTop
+const canvas_left = canvas.offsetLeft
+const canvas_top = canvas.offsetTop
 
 // Create an array to hold items
 var charges = [];
@@ -37,6 +37,7 @@ var charges = [];
 canvas.addEventListener('mousedown', function(e) {
     var x = e.pageX - canvas_left;
     var y = e.pageY - canvas_top;
+    var charge_sign = (e.button == 0) ? 1 : -1;
     console.log(e)
     // Add a new element to the charges array
     charges.push({
@@ -45,7 +46,8 @@ canvas.addEventListener('mousedown', function(e) {
         x: x,
         vy: 0,
         vx: 0,
-        q: charge
+        q: charge * charge_sign,
+        trail : []
     });
     updateView()
 }, false)
@@ -63,28 +65,26 @@ physicsWorker.addEventListener('message', function (e) {
     })
 })
 
+physicsWorker.postMessage({
+    charges: charges,
+    canvasProperties: {'width':canvasWidth, 'height':canvasHeight} 
+})
+
+
 renderWorker.postMessage({
     canvas: offscreen,
     charges: charges,
     pixPerCell: pixPerCell
 }, [offscreen])
 
-physicsWorker.postMessage({
-    charges: charges
-})
-
-// renderWorker.postMessage({
-//     charges : charges,
-//     pixPerCell : pixPerCell,
-//     canvas : offscreen,
-// }, [offscreen])
 
 function updateView() {
     console.log(charges)
 
     physicsWorker.postMessage({
         charges: charges,
-        update: ['charges']
+        canvasProperties: {'width':canvasWidth, 'height':canvasHeight} ,
+        update: ['charges', 'canvasProperties']
     })
 }
 
