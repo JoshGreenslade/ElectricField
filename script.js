@@ -1,5 +1,5 @@
 // Constants
-const charge = 800
+const charge = 1600
 const pixPerCell = 4
 const canvasWidth = 400
 const canvasHeight = 400

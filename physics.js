@@ -2,11 +2,12 @@ var charges
 var canvasProperties
 var lastTime = 0
 
-const trailLength = 250
+const trailLength = 150
 const smallestPassingDistanceSquared = 10 ** 2
-const k = 10
+const k = 50
 const subSteps = 1000
 const friction = 1
+const timescale = 5
 
 function getFieldVector(x, y) {
     // Get the field vector and strength at an abritrary position
@@ -28,7 +29,6 @@ function getFieldVector(x, y) {
         vec.x += strength * (dx2/r2) * Math.sign(dx)
         vec.y += strength * (dy2/r2) * Math.sign(dy)
         vec.strength += strength
-        // console.log(vec)
     }
 
     return vec
@@ -37,9 +37,8 @@ function getFieldVector(x, y) {
 function updateCharges(){
     deltaTime = (performance.now() - lastTime)/1000
     lastTime = performance.now()
-    dt = deltaTime / subSteps
+    dt = timescale * deltaTime / subSteps
 
-    
     for (var i = 0; i < subSteps; i++) {
         for (var charge of charges) {
             fieldVector = getFieldVector(charge.x, charge.y)
@@ -47,12 +46,14 @@ function updateCharges(){
             charge.vy += fieldVector.y * charge.q * dt
 
             // Limit to a maximum speed
-            if (Math.abs(charge.vx) > 100) charge.vx *= 0.99999
-            if (Math.abs(charge.vy) > 100) charge.vy *= 0.99999
+            if (Math.abs(charge.vx) > 1000) charge.vx *= 0.9
+            if (Math.abs(charge.vy) > 1000) charge.vy *= 0.9
 
             charge.x += charge.vx * dt
             charge.y += charge.vy * dt
+
         }
+        _walls()
     }
 
     // Add to the trail
@@ -70,8 +71,6 @@ function updateCharges(){
         charge.vy *= friction
     }
     
-
-    _walls()
 }
 
 function _walls() {
@@ -96,7 +95,33 @@ function _walls() {
     }
 }
 
+// function _circleWall() {
+//     for (var charge of charges) {
+//         if (charge.x * charge.x + charge.y * charge.y >= canvasProperties['width']/2) {
 
+//         }
+// }
+
+function getKE() {
+    KE = 0
+    for (charge of charges) {
+        KE += (charge.vx * charge.vx) + (charge.vy * charge.vy)
+    }
+    return KE
+}
+
+// function getPE() {
+//     PE = 0
+//     for (charge of charges) {
+//         for (otherCharge of charges){
+//             if (charge != otherCharge) 
+//             {
+//                 PE += 1/
+//             }
+//         }
+//     }
+//     return KE
+// }
 function loop() {
     updateCharges()
     postMessage({

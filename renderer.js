@@ -3,9 +3,10 @@ var ctx
 var charges
 var imgData
 var pixPerCell
+var lastTime = 0
 
 const k = 50
-const smallestPassingDistanceSquared = 1 ** 2
+const smallestPassingDistanceSquared = 10 ** 2
 
 
 onmessage = function (e) {
@@ -14,7 +15,6 @@ onmessage = function (e) {
             this[key] = e.data[key]
         }
     } else {
-        console.log('Looping')
         canvas = e.data.canvas;
         ctx = canvas.getContext('2d');
         pixPerCell = e.data.pixPerCell;
@@ -44,7 +44,6 @@ function getFieldVector(x, y) {
         vec.x += strength * (dx2/r2) * Math.sign(dx)
         vec.y += strength * (dy2/r2) * Math.sign(dy)
         vec.strength += strength
-        // console.log(vec)
     }
 
     return vec
@@ -57,7 +56,7 @@ function loop() {
 }
 
 function getColor(dist) {
-    return [dist, 0 , -1*dist]
+    return [dist*4, Math.abs(4*dist/10) , -1*dist*4]
 }
 
 
@@ -78,6 +77,10 @@ function draw() {
             let strength = vec.strength
             var color = getColor(strength)
             // var color = [255, 255, 255]
+            
+            // Old method
+            // ctx.fillStyle = ['rgb(',color[0],',',color[1],',',color[2],')'].join('')
+            // ctx.fillRect(i-pixPerCell/2, j-pixPerCell/2, pixPerCell, pixPerCell)
 
             for (var k = 0; k < pixPerCell * pixPerCell; k++) {
                 offset = (k % pixPerCell) + ((k/pixPerCell) | 0)*canvas.width
@@ -96,7 +99,7 @@ function draw() {
     // Draw each charge
     for (charge of charges) {
         ctx.fillStyle = 'white'
-        ctx.fillRect(charge.x, charge.y, 4, 4)
+        ctx.fillRect(charge.x, charge.y, 1, 1)
     }
 
     // Draw each trail
@@ -105,11 +108,18 @@ function draw() {
         ctx.moveTo(charge.trail[0].x, charge.trail[0].y)
         for (pos of charge.trail) {
             ctx.lineTo(pos['x'], pos['y'])
-            // console.log(pos.x, pos.y)
         }
     }
     ctx.strokeStyle = 'white'
     ctx.stroke();
+
+    // Draw FPS
+    // ctx.font = '60px sans-serif white'
+    // var delta = (performance.now() - lastTime)/1000
+    // lastTime = performance.now()
+    // var fps = 1/delta
+    // ctx.fillText('FPS: ' + Math.round(fps, 2), 230, 200)
+
     
 
 
