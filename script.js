@@ -1,4 +1,9 @@
-    // Options
+// Constants
+var canvasWidth = 600;
+var canvasHeight = 600; 
+var allowed_res = [1,2,4,5,8,10,12,15,20,30,40]
+
+// Options
 var timescale = 1
 var pixPerCell = 10
 var friction = 0
@@ -17,17 +22,22 @@ var chargeInput = document.getElementById("charge")
 var trailInput = document.getElementById("trail")
 var resetInput = document.getElementById("reset")
 
-// Set the canvas width and height
-const canvasWidth  =  (window.innerWidth < 450) ? 300 : 400
-const canvasHeight = (window.innerWidth < 450) ? 300 : 400
-canvas.width = canvasWidth
-canvas.height = canvasHeight
+// Ensure everything words at different resolutions
 if (window.innerWidth < 450) {
+    canvasWidth  = 300 
+    canvasHeight = 300
     chargeInput.value = 200
+    allowed_res = [1,2,4,5,6,10,12,15,20,30]
     document.getElementById("charge_output").innerHTML = "200"
     charge = 200
 }
-    
+if (window.innerWidth > 450 & window.innerWidth < 850) {
+    canvasWidth  = 400 
+    canvasHeight = 400
+    allowed_res = [1,2,4,5,8,10,16,20,25,40]
+}
+canvas.width = canvasWidth
+canvas.height = canvasHeight
 
 
 // Do something?
@@ -118,7 +128,7 @@ timescaleInput.addEventListener('input', function (e) {
 })
 
 resolutionInput.addEventListener('input', function (e) {
-    pixPerCell = closest([1,2,4,5,8,16,20,40], parseInt(e.target.value))
+    pixPerCell = closest(allowed_res, parseInt(e.target.value))
     renderWorker.postMessage({
         pixPerCell: pixPerCell,
         update: ['pixPerCell']
