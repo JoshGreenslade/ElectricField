@@ -58,10 +58,20 @@ const canvas_top = canvas.offsetTop
 // Create an array to hold items
 var charges = [];
 
+// Function to get mouse pos
+function getMousePos(canvas, evt) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: evt.x - rect.left,
+      y: evt.y - rect.top
+    };
+  }
+
 // Add an event listener for click events
 canvas.addEventListener('mousedown', function(e) {
-    var x = e.pageX - canvas_left;
-    var y = e.pageY - canvas_top;
+    var res = getMousePos(canvas, e)
+    var x = res.x
+    var y = res.y
     var charge_sign = (e.button == 0) ? 1 : -1;
     console.log(e)
     // Add a new element to the charges array

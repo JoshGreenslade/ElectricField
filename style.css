@@ -9,11 +9,10 @@ h1, h2, h3, h4 {
 
 .container {
     margin: auto;
-    width: 400px;
+    width: 50%;
     text-align: left;
     line-height: 1.6;
     font-family: sans-serif;
-    border: 1px;
 }
 
 canvas {
@@ -30,11 +29,7 @@ footer {
 
 }
 
-@media (max-width: 450px){
-    canvas {
-        width: 300px;
-        height: 300px;
-    }
+@media (max-width: 350px){
 
     .container {
         width: 300px
