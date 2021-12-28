@@ -5,7 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <script type='module' src="script.js" async></script>
+    <script type="text/javascript">
+        var scr = document.createElement('script');
+        scr.type = 'text/javascript';
+        if(navigator.userAgent.indexOf("Firefox") != -1 )
+          scr.src = "firefoxfix.js"
+        else 
+          scr.src = "script.js"
+        document.head.appendChild(scr);
+      </script>
     <title>Document</title>
 </head>
 <body>
@@ -16,6 +24,7 @@
         <h3>How to use</h3>
         <p>Left click to create a positive charge. Right click to create a negative charge (If on mobile use the options)</p>
         <p>Use the options at the bottom to change the timescale, resolution, friction, charge, trails, and static charges.</p>
+        <p>(Note, this will run on firefox, but is optimized for chrome and is a lot more performant, especially with resolution)</p>
         
         <div>
             <canvas> </canvas>

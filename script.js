@@ -46,6 +46,7 @@ if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigat
 
 // Do something?
 var offscreen = canvas.transferControlToOffscreen()
+// var offscreen = canvas
 
 
 // Variables
