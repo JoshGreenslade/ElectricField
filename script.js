@@ -32,8 +32,8 @@ var offscreen = canvas.transferControlToOffscreen()
 // Variables
 var lastTime = 0;
 var paused = false;
-var physicsWorker = new Worker("/physics.js")
-var renderWorker = new Worker('/renderer.js')
+var physicsWorker = new Worker("./physics.js")
+var renderWorker = new Worker('./renderer.js')
 
 
 // Get the position of the top left of the canvas
