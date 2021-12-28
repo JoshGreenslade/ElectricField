@@ -1,8 +1,4 @@
-// Constants
-const canvasWidth = 400
-const canvasHeight = 400
-
-// Options
+    // Options
 var timescale = 1
 var pixPerCell = 10
 var friction = 0
@@ -19,10 +15,19 @@ var resolutionInput = document.getElementById("resolution")
 var frictionInput = document.getElementById("friction")
 var chargeInput = document.getElementById("charge")
 var trailInput = document.getElementById("trail")
+var resetInput = document.getElementById("reset")
 
 // Set the canvas width and height
-canvas.width = canvasWidth  
-canvas.height= canvasHeight
+const canvasWidth  =  (window.innerWidth < 450) ? 300 : 400
+const canvasHeight = (window.innerWidth < 450) ? 300 : 400
+canvas.width = canvasWidth
+canvas.height = canvasHeight
+if (window.innerWidth < 450) {
+    chargeInput.value = 200
+    document.getElementById("charge_output").innerHTML = "200"
+    charge = 200
+}
+    
 
 
 // Do something?
@@ -140,6 +145,11 @@ trailInput.addEventListener('change', function (e) {
         trailLength: trailLength,
         update: ['trailLength']
     })
+})
+resetInput.addEventListener('click', function (e) {
+    console.log('hello')
+    charges = []
+    updateView()
 })
 
 

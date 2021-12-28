@@ -70,6 +70,7 @@ function draw() {
     // Set the index
     var index = 0;
     var offset = 0;
+    console.log(canvas.width)
 
     // Render the fields
     for (var i=0+pixPerCell/2; i < canvas.width; i +=pixPerCell) {
@@ -84,7 +85,6 @@ function draw() {
             // Old method
             // ctx.fillStyle = ['rgb(',color[0],',',color[1],',',color[2],')'].join('')
             // ctx.fillRect(i-pixPerCell/2, j-pixPerCell/2, pixPerCell, pixPerCell)
-
             for (var k = 0; k < pixPerCell * pixPerCell; k++) {
                 offset = (k % pixPerCell) + ((k/pixPerCell) | 0)*canvas.width
                 offset *= 4
