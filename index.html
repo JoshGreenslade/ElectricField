@@ -14,14 +14,19 @@
         <h1>Electric Field Simulator</h1>
 
         <h3>How to use</h3>
-        <p>Left click to create a positive charge. Right click to create a negative charge</p>
-        <p>Use the options at the bottom to change the timescale, resolution, friction, charge, trails, and static charges</p>
+        <p>Left click to create a positive charge. Right click to create a negative charge (If on mobile use the options)</p>
+        <p>Use the options at the bottom to change the timescale, resolution, friction, charge, trails, and static charges.</p>
         
         <div>
             <canvas> </canvas>
         </div>
     
         <!-- Controls -->
+        <div class="hidden">
+            <label for="positive" style="display: inline">Positive:</label>
+            <input type="checkbox" id="positive" checked>
+       </div>
+       
         <div>
             <label for="timescale">Timescale:</label>
             <input type="range" min="-2" max="1" step="0.01" id="timescale" oninput="document.getElementById('timescale_output').value = Math.pow(10,this.value).toFixed(2)">

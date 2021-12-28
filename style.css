@@ -21,6 +21,10 @@ canvas {
     background-color: black;
 }
 
+.hidden {
+    display: none
+}
+
 footer {
     margin: auto;
     margin-top: 5rem;
@@ -33,5 +37,9 @@ footer {
 
     .container {
         width: 300px;
+    }
+    
+    .mobile {
+        display: inline-block
     }
 }

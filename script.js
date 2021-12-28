@@ -15,6 +15,7 @@ var trailLength = 150
 var canvas = document.querySelector('canvas');
 
 // Get the inputs
+var positiveInput = document.getElementById("positive")
 var timescaleInput = document.getElementById("timescale")
 var resolutionInput = document.getElementById("resolution")
 var frictionInput = document.getElementById("friction")
@@ -38,7 +39,10 @@ if (window.innerWidth > 450 & window.innerWidth < 850) {
 }
 canvas.width = canvasWidth
 canvas.height = canvasHeight
-
+if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){
+    positiveInput.parentElement.className = ''
+    console.log('Hello')
+}
 
 // Do something?
 var offscreen = canvas.transferControlToOffscreen()
@@ -72,8 +76,8 @@ canvas.addEventListener('mousedown', function(e) {
     var res = getMousePos(canvas, e)
     var x = res.x
     var y = res.y
-    var charge_sign = (e.button == 0) ? 1 : -1;
-    console.log(e)
+    console.log(positiveInput.checked)
+    var charge_sign = (e.button == 0 & positiveInput.checked ) ? 1 : -1;
     // Add a new element to the charges array
     charges.push({
         colour: '#055AFF',
@@ -119,7 +123,6 @@ renderWorker.postMessage({
 
 
 function updateView() {
-    console.log(charges)
 
     physicsWorker.postMessage({
         charges: charges,
@@ -158,16 +161,13 @@ chargeInput.addEventListener('input', function (e) {
 })
 
 trailInput.addEventListener('change', function (e) {
-    console.log(e)
     trailLength = (e.target.checked) ? 150 : 1
-    console.log(trailLength)
     physicsWorker.postMessage({
         trailLength: trailLength,
         update: ['trailLength']
     })
 })
 resetInput.addEventListener('click', function (e) {
-    console.log('hello')
     charges = []
     updateView()
 })
