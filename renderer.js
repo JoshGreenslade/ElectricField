@@ -67,7 +67,6 @@ function draw() {
     // Set the index
     var index = 0;
     var offset = 0;
-    console.log(canvas.width)
 
     // Render the fields
     for (var i=0+pixPerCell/2; i < canvas.width; i +=pixPerCell) {
