@@ -9,7 +9,44 @@
     <title>Document</title>
 </head>
 <body>
-    <canvas> </canvas>
+    <div>
+        <canvas> </canvas>
+    </div>
+
+    <!-- Controls -->
+    <div>
+        <label for="timescale">Timescale:</label>
+        <input type="range" min="-2" max="1" step="0.01" id="timescale" oninput="document.getElementById('timescale_output').value = Math.pow(10,this.value)">
+        <output id=timescale_output>1</output>
+    </div>
+
+    <div>
+        <label for="Resolution">Resolution:</label>
+        <input type="range" min="1" max="20" step="1" value="10" id="resolution" oninput="document.getElementById('resolution_output').value = this.value">
+        <output id=resolution_output>10</output>
+    </div>
+
+    <div>
+        <label for="friction">Friction:</label>
+        <input type="range" min="0" max="0.2" step="0.001" value="0" id="friction" oninput="document.getElementById('friction_output').value = this.value">
+        <output id=friction_output>0</output>
+    </div>
+
+    <div>
+        <label for="charge">Charge:</label>
+        <input type="range" min="100" max="1600" step="50" value="800" id="charge" oninput="document.getElementById('charge_output').value = this.value">
+        <output id=charge_output>800</output>
+    </div>
+
+    <div>
+        <label for="trail">Trails:</label>
+        <input type="checkbox" id="trail" checked>
+   </div>
+
+    <div>
+        <label for="static">Static:</label>
+        <input type="checkbox" id="static">
+    </div>
 </body>
 
 </html>

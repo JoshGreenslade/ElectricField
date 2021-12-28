@@ -1,14 +1,24 @@
 // Constants
-const charge = 1600
-const pixPerCell = 4
 const canvasWidth = 400
 const canvasHeight = 400
+
+// Options
+var timescale = 1
+var pixPerCell = 10
+var friction = 0
+var charge = 800
+var trailLength = 150
+
 
 // Get the canvas object
 var canvas = document.querySelector('canvas');
 
-// Get the canvas context, in this case 2d. This represents our drawing object
-// var ctx = canvas.getContext('bitmaprenderer');
+// Get the inputs
+var timescaleInput = document.getElementById("timescale")
+var resolutionInput = document.getElementById("resolution")
+var frictionInput = document.getElementById("friction")
+var chargeInput = document.getElementById("charge")
+var trailInput = document.getElementById("trail")
 
 // Set the canvas width and height
 canvas.width = canvasWidth  
@@ -47,10 +57,12 @@ canvas.addEventListener('mousedown', function(e) {
         vy: 0,
         vx: 0,
         q: charge * charge_sign,
-        trail : []
+        trail : [],
+        static: document.getElementById('static').checked
     });
     updateView()
 }, false)
+
 
 canvas.addEventListener("contextmenu", function (event) {
 	console.log('context menu prevented');
@@ -67,7 +79,10 @@ physicsWorker.addEventListener('message', function (e) {
 
 physicsWorker.postMessage({
     charges: charges,
-    canvasProperties: {'width':canvasWidth, 'height':canvasHeight} 
+    canvasProperties: {'width':canvasWidth, 'height':canvasHeight},
+    timescale: timescale,
+    friction: friction,
+    trailLength: trailLength
 })
 
 
@@ -89,5 +104,57 @@ function updateView() {
 }
 
 
+// === Control Listeners
+timescaleInput.addEventListener('input', function (e) {
+    physicsWorker.postMessage({
+        timescale: Math.pow(10, e.target.value),
+        update: ['timescale']
+    })
+})
+
+resolutionInput.addEventListener('input', function (e) {
+    pixPerCell = closest([1,2,4,5,8,16,20,40], parseInt(e.target.value))
+    renderWorker.postMessage({
+        pixPerCell: pixPerCell,
+        update: ['pixPerCell']
+    })
+})
+
+frictionInput.addEventListener('input', function (e) {
+    friction = parseFloat(e.target.value)
+    physicsWorker.postMessage({
+        friction: friction,
+        update: ['friction']
+    })
+})
+
+chargeInput.addEventListener('input', function (e) {
+    charge = parseFloat(e.target.value)
+})
+
+trailInput.addEventListener('change', function (e) {
+    console.log(e)
+    trailLength = (e.target.checked) ? 150 : 1
+    console.log(trailLength)
+    physicsWorker.postMessage({
+        trailLength: trailLength,
+        update: ['trailLength']
+    })
+})
+
+
+function closest(array, num) {
+    var i = 0
+    var minDif = 1000;
+    var ans;
+    for (i in array) {
+        var dif = Math.abs(num - array[i]);
+        if (dif < minDif) {
+            minDif = dif
+            ans = array[i]
+        }
+    }
+    return ans
+}
 
 

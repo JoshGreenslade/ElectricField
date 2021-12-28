@@ -12,8 +12,11 @@ const smallestPassingDistanceSquared = 10 ** 2
 onmessage = function (e) {
     if ('update' in e.data) {
         for (var key of e.data.update) {
+            console.log(key)
+            console.log(e)
             this[key] = e.data[key]
         }
+        console.log(e)
     } else {
         canvas = e.data.canvas;
         ctx = canvas.getContext('2d');

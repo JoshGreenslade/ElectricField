@@ -2,12 +2,14 @@ var charges
 var canvasProperties
 var lastTime = 0
 
-const trailLength = 150
 const smallestPassingDistanceSquared = 10 ** 2
 const k = 50
 const subSteps = 1000
-const friction = 1
-const timescale = 5
+
+// Options
+var friction
+var timescale
+var trailLength
 
 function getFieldVector(x, y) {
     // Get the field vector and strength at an abritrary position
@@ -41,16 +43,18 @@ function updateCharges(){
 
     for (var i = 0; i < subSteps; i++) {
         for (var charge of charges) {
-            fieldVector = getFieldVector(charge.x, charge.y)
-            charge.vx += fieldVector.x * charge.q * dt
-            charge.vy += fieldVector.y * charge.q * dt
-
-            // Limit to a maximum speed
-            if (Math.abs(charge.vx) > 1000) charge.vx *= 0.9
-            if (Math.abs(charge.vy) > 1000) charge.vy *= 0.9
-
-            charge.x += charge.vx * dt
-            charge.y += charge.vy * dt
+            if (!charge.static) {
+                fieldVector = getFieldVector(charge.x, charge.y)
+                charge.vx += fieldVector.x * charge.q * dt
+                charge.vy += fieldVector.y * charge.q * dt
+    
+                // Limit to a maximum speed
+                if (Math.abs(charge.vx) > 1000) charge.vx *= 0.9
+                if (Math.abs(charge.vy) > 1000) charge.vy *= 0.9
+    
+                charge.x += charge.vx * dt
+                charge.y += charge.vy * dt
+            }
 
         }
         _walls()
@@ -67,8 +71,8 @@ function updateCharges(){
 
     // Friction
     for (var charge of charges) {
-        charge.vx *= friction
-        charge.vy *= friction
+        charge.vx *= 1-friction
+        charge.vy *= 1-friction
     }
     
 }
@@ -131,7 +135,16 @@ function loop() {
 }
 
 onmessage = function (e) {
-    charges = e.data.charges
-    canvasProperties = e.data.canvasProperties
-    loop()
+    if ('update' in e.data) {
+        for (var key of e.data.update) {
+            this[key] = e.data[key]
+        }
+    } else {
+        charges = e.data.charges
+        canvasProperties = e.data.canvasProperties
+        timescale = e.data.timescale
+        friction = e.data.friction
+        trailLength = e.data.trailLength
+        loop()
+    }
 }
