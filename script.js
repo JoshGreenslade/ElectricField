@@ -9,6 +9,8 @@ var pixPerCell = 10
 var friction = 0
 var charge = 800
 var trailLength = 150
+var minSamples = 5000
+
 
 
 // Get the canvas object
@@ -18,6 +20,7 @@ var canvas = document.querySelector('canvas');
 var positiveInput = document.getElementById("positive")
 var timescaleInput = document.getElementById("timescale")
 var resolutionInput = document.getElementById("resolution")
+var physicssubsamplesInput = document.getElementById("physicssubsamples")
 var frictionInput = document.getElementById("friction")
 var chargeInput = document.getElementById("charge")
 var trailInput = document.getElementById("trail")
@@ -112,7 +115,8 @@ physicsWorker.postMessage({
     canvasProperties: {'width':canvasWidth, 'height':canvasHeight},
     timescale: timescale,
     friction: friction,
-    trailLength: trailLength
+    trailLength: trailLength,
+    minSamples: minSamples
 })
 
 
@@ -146,6 +150,14 @@ resolutionInput.addEventListener('input', function (e) {
     renderWorker.postMessage({
         pixPerCell: pixPerCell,
         update: ['pixPerCell']
+    })
+})
+
+physicssubsamplesInput.addEventListener('input', function (e) {
+    minSamples = parseInt(e.target.value)
+    physicsWorker.postMessage({
+        minSamples: minSamples,
+        update: ['minSamples']
     })
 })
 

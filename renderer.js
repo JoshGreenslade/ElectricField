@@ -6,7 +6,7 @@ var pixPerCell
 var lastTime = 0
 
 const k = 50
-const smallestPassingDistanceSquared = 10 ** 2
+const smallestPassingDistanceSquared = 1 ** 2
 
 
 onmessage = function (e) {

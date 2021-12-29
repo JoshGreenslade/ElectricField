@@ -23,7 +23,7 @@
 
         <h3>How to use</h3>
         <p>Left click to create a positive charge. Right click to create a negative charge (If on mobile use the options)</p>
-        <p>Use the options at the bottom to change the timescale, resolution, friction, charge, trails, and static charges.</p>
+        <p>Use the options at the bottom to change the physics timescale, image resolution, # of physics subsamples, friction, charge, trails, and static charges.</p>
         <p>(Note, this will run on firefox, but is optimized for chrome and is a lot more performant, especially with resolution)</p>
         
         <div>
@@ -46,6 +46,12 @@
             <label for="Resolution">Resolution:</label>
             <input type="range" min="1" max="20" step="1" value="10" id="resolution" oninput="document.getElementById('resolution_output').value = this.value">
             <output id=resolution_output>10</output>
+        </div>
+
+        <div>
+            <label for="physicssubsamples">Subsamples:</label>
+            <input type="range" min="100" max="10000" step="100" value="5000" id="physicssubsamples" oninput="document.getElementById('physicssubsamples_output').value = this.value">
+            <output id=physicssubsamples_output>5000</output>
         </div>
     
         <div>
