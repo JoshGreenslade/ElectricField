@@ -19,6 +19,29 @@ canvas {
     margin: auto;
     display: block;
     background-color: black;
+    width: 300px;
+    height: 300px;
+}
+
+@media (min-width: 550px) {
+    canvas {
+        width: 400px;
+        height: 400px;
+    }
+}
+
+@media (min-width: 800px) {
+    canvas {
+        width: 600px;
+        height: 600px;
+    }
+}
+
+@media (min-width: 1200px) {
+    canvas {
+        width: 800px;
+        height: 800px;
+    }
 }
 
 .hidden {
@@ -38,7 +61,7 @@ footer {
     .container {
         width: 300px;
     }
-    
+
     .mobile {
         display: inline-block
     }
