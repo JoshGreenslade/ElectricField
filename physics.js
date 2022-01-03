@@ -1,34 +1,7 @@
 
 
-const k = 50;
-const smallestPassingDistance = 5;
-
-
-function getFieldVector(x, y, qArray, xArray, yArray) {
-    // Get the field vector and strength at an arbitrary position in the grid
-    const length = qArray.length;
-    let strengthX = 0.0;
-    let strengthY = 0.0;
-
-    let i = 0;
-    while (i < length) {
-        const dx = x - xArray[i];
-        const dy = y - yArray[i];
-        const dx2 = dx * dx;
-        const dy2 = dy * dy;
-        const r2 = dx2 + dy2;
-        const r = Math.sqrt(r2);
-        if (r > smallestPassingDistance) {
-            const strength = k * qArray[i] / r2;
-            strengthX += strength * dx / r;
-            strengthY += strength * dy / r;
-        }
-
-        i++;
-    }
-
-    return [strengthX, strengthY];
-}
+const k = 50.0;
+const smallestPassingDistance = 5.0;
 
 
 function updateCharges({mArray, qArray, xArray, yArray, vxArray, vyArray, width, height, friction, steps, dt}) {
@@ -47,7 +20,29 @@ function updateCharges({mArray, qArray, xArray, yArray, vxArray, vyArray, width,
                 const q = qArray[j];
                 const x = xArray[j];
                 const y = yArray[j];
-                const [strengthX, strengthY] = getFieldVector(x, y, qArray, xArray, yArray);
+
+                /* Manually inlined field strength calculation */
+                let strengthX = 0.0;
+                let strengthY = 0.0;
+
+                let l = 0;
+                while (l < length) {
+                    const dx = x - xArray[l];
+                    const dy = y - yArray[l];
+                    const dx2 = dx * dx;
+                    const dy2 = dy * dy;
+                    const r2 = dx2 + dy2;
+                    const r = Math.sqrt(r2);
+                    if (r > smallestPassingDistance) {
+                        const strength = k * qArray[l] / r2;
+                        strengthX += strength * dx / r;
+                        strengthY += strength * dy / r;
+                    }
+
+                    l++;
+                }
+                /* Manually inlined field strength calculation */
+
                 const vx = vxArray[j] + strengthX * q * dt / m;
                 const vy = vyArray[j] + strengthY * q * dt / m;
                 vxArray[j] = vx;
