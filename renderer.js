@@ -1,7 +1,7 @@
 
 
-const k = 50;
-const smallestPassingDistanceSquared = 1;
+const k = 50.0;
+const smallestPassingDistanceSquared = 1.0;
 
 
 function getFieldStrength(x, y, qArray, xArray, dySquaredArray) {
@@ -41,7 +41,7 @@ function draw(data) {
     let buffer = data.buffer;
     if (buffer == null || buffer.byteLength < width * height * 4) {
         console.log(`Allocating new rendering buffer ${width}x${height}`);
-        buffer = new ArrayBuffer(width * height * 4);
+        buffer = data.buffer = new ArrayBuffer(width * height * 4);
     }
     const u8buffer = new Uint8ClampedArray(buffer);
     const yLength = yArray.length;
@@ -68,7 +68,6 @@ function draw(data) {
     }
 
     const endTimestamp = performance.now();
-    data.buffer = buffer;
     data.renderDuration = endTimestamp - startTimestamp;
     postMessage(data, [buffer]);
 }
