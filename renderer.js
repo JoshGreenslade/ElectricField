@@ -5,11 +5,18 @@ const smallestPassingDistanceSquared = 1;
 
 
 function getFieldStrength(x, y, qArray, xArray, dySquaredArray) {
-    return qArray.reduce((acc, val, i) => {
+    const length = qArray.length;
+    let strength = 0.0;
+
+    let i = 0;
+    while (i < length) {
         const dx = x - xArray[i];
         const r = dx * dx + dySquaredArray[i];
-        return acc + k * val / Math.max(r, smallestPassingDistanceSquared);
-    }, 0.0);
+        strength += k * qArray[i] / Math.max(r, smallestPassingDistanceSquared);
+        i++;
+    }
+
+    return strength;
 }
 
 
@@ -37,13 +44,27 @@ function draw(data) {
         buffer = new ArrayBuffer(width * height * 4);
     }
     const u8buffer = new Uint8ClampedArray(buffer);
+    const yLength = yArray.length;
+    const dySquaredArray = new Float32Array(yLength);
 
-    for (let i = 0, y = 0; y < height; y++) {
-        const dySquaredArray = yArray.map(val => (y - val) * (y - val));
-        for (let x = 0; x < width; x++) {
+    let i = 0;
+    let y = 0;
+    while (y < height) {
+        let j = 0;
+        while (j < yLength) {
+            const dy = y - yArray[j];
+            dySquaredArray[j] = dy * dy;
+            j++;
+        }
+
+        let x = 0;
+        while (x < width) {
             const strength = getFieldStrength(x, y, qArray, xArray, dySquaredArray);
             i = drawFieldStrength(strength, u8buffer, i);
+            x++;
         }
+
+        y++;
     }
 
     const endTimestamp = performance.now();
