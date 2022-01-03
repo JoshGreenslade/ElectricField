@@ -1,23 +1,15 @@
 
 
 class MultiThreadedRenderer {
-  constructor(canvas) {
+  constructor(canvas, maxThreads) {
     // Physics is O(n^2) and becomes the bottleneck for the number of charges of 20-30 or above.
     // So upping the number of threads beyond some point becomes of little use. Also, the deeper
     // the queue, the bigger the lag, it becomes visible when user interacts with the canvas.
     // TODO: Safari doesn't have hardwareConcurrency, default to 2 workers in this case.
-    this.size = Math.min(Math.max((navigator.hardwareConcurrency || 4) - 2, 1), 8);
+    this.size = Math.min(Math.max((navigator.hardwareConcurrency || 4) - 2, 1), maxThreads || 4);
     this.width = canvas.width = canvas.clientWidth;
     this.height = canvas.height = canvas.clientHeight;
     this.context = canvas.getContext('2d');
-
-    this.idleWorkers = new Map();
-    for (let i = 0; i < this.size; i++) {
-      const [name, worker] = this.prepareWorker(i);
-      this.idleWorkers.set(name, worker);
-    }
-    this.busyWorkers = new Map();
-    this.resultsBuffer = new Map();
 
     // Workers can return results out of order, we stamp the tasks with increasing IDs,
     // so we can put them back in order.
@@ -25,9 +17,16 @@ class MultiThreadedRenderer {
     this.nextPullId = 0;
     this.tasks = [];
     this.buffers = [];
-    for (let i = 0; i < this.size + this.size; i++) {
+
+    this.idleWorkers = new Map();
+    for (let i = 0; i < this.size; i++) {
+      const [name, worker] = this.prepareWorker(i);
+      this.idleWorkers.set(name, worker);
+      this.buffers.push(new ArrayBuffer(0));
       this.buffers.push(new ArrayBuffer(0));
     }
+    this.busyWorkers = new Map();
+    this.resultsBuffer = new Map();
 
     this.lastTimestamp = undefined;
     this.chargesStats = this.initStats();
@@ -158,7 +157,7 @@ class Simulation {
   constructor(renderer) {
     this.renderer = renderer;
 
-    this.baseSpeed = 0.03;
+    this.baseSpeed = 0.01;
     this.timeScale = 1;
     this.friction = 0;
     this.charge = 800;
@@ -255,7 +254,7 @@ window.addEventListener('load', () => {
   const resetInput = document.getElementById("reset");
 
   const canvas = document.querySelector('canvas');
-  const renderer = new MultiThreadedRenderer(canvas);
+  const renderer = new MultiThreadedRenderer(canvas, 4);
   const simulation = new Simulation(renderer);
 
   // Function to get mouse pos
@@ -283,7 +282,7 @@ window.addEventListener('load', () => {
     if (simulation.timeScale <= 0.01) {
       simulation.timeScale = 0;
     }
-    timescaleOutput.value = simulation.timeScale > 0 ? `${simulation.timeScale.toFixed(2)}x` : 'paused';
+    timescaleOutput.value = simulation.timeScale > 0 ? `${simulation.timeScale.toFixed(3)}x` : 'paused';
   });
 
   physicsSubsamplesInput.addEventListener('input', function (e) {
@@ -293,7 +292,7 @@ window.addEventListener('load', () => {
 
   frictionInput.addEventListener('input', function (e) {
     simulation.friction = parseFloat(e.target.value);
-    frictionOutput.value = simulation.friction;
+    frictionOutput.value = simulation.friction.toFixed(3);
   });
 
   chargeInput.addEventListener('input', function (e) {
