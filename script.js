@@ -31,24 +31,24 @@ class MultiThreadedRenderer {
 
     this.lastTimestamp = undefined;
     this.chargesStats = this.initStats();
-    this.fpsStats = this.initStats();
+    this.fpsStats = this.initStats((sum, count) => 1000 * count / sum);
+    this.loadStats = this.initStats();
     this.renderStats = this.initStats();
     this.physicsStats = this.initStats();
   }
 
-  initStats = () => ({
+  initStats = (calc) => ({
     sum: 0,
     count: 0,
     avg: undefined,
+    calc: calc || ((sum, count) => sum / count),
   });
 
   drawStats = () => {
-    const { context, chargesStats, fpsStats, renderStats, physicsStats } = this;
+    const { context, chargesStats, fpsStats, loadStats, renderStats, physicsStats } = this;
     const h = 15;
     const x = 5;
     let y = 15;
-
-    context.fillStyle = 'white';
 
     const draw = (title, stat, precision, unit) => {
       if (stat != null) {
@@ -57,11 +57,14 @@ class MultiThreadedRenderer {
       }
     };
 
+    context.fillStyle = 'white';
     context.fillText(`canvas: ${this.width}x${this.height}`, x, y);
     y += h;
     draw('charges', chargesStats.avg, 0);
     draw('fps', fpsStats.avg, 1);
-    draw('render threads', this.size, 0);
+    context.fillText(`render threads: ${this.size}`, x, y);
+    y += h;
+    draw('render load', loadStats.avg, 0, '%');
     draw('render time', renderStats.avg, 1, 'ms');
     draw('physics time', physicsStats.avg, 1, 'ms');
   };
@@ -71,7 +74,7 @@ class MultiThreadedRenderer {
       stat.sum += x;
       stat.count++;
       if (stat.count >= limit) {
-        stat.avg = stat.sum / stat.count;
+        stat.avg = stat.calc(stat.sum, stat.count);
         stat.sum = stat.count = 0;
       }
     }
@@ -107,10 +110,11 @@ class MultiThreadedRenderer {
     this.nextPullId++;
 
     if (this.lastTimestamp != null) {
-      this.updateStats(1000 / (timestamp - this.lastTimestamp), this.fpsStats, 20);
+      this.updateStats(timestamp - this.lastTimestamp, this.fpsStats, 30);
     }
-    this.updateStats(physicsDuration, this.physicsStats, 20);
-    this.updateStats(renderDuration, this.renderStats, 20);
+    this.updateStats(physicsDuration, this.physicsStats, 30);
+    this.updateStats(100.0 * this.busyWorkers.size / this.size, this.loadStats, 30);
+    this.updateStats(renderDuration, this.renderStats, 30);
     this.updateStats(qArray.length, this.chargesStats, 1);
     this.lastTimestamp = timestamp;
 
@@ -219,9 +223,9 @@ class Simulation {
   }
 
   addCharge = (x, y, positive) => {
-    const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.charges;
-    const {charge, mass} = this;
     this.update = () => {
+      const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.charges;
+      const {charge, mass} = this;
       this.charges = {
         qArray: Float32Array.of(...qArray, positive ? charge : -charge),
         mArray: Float32Array.of(...mArray, mass),
