@@ -1,36 +1,20 @@
 
 
-const k = 50.0;
-const smallestPassingDistanceSquared = 1.0;
+const k = 0.001;
+const smallestPassingDistanceSquared = 0.00003;
 
 
 function getFieldStrength(x, y, qArray, xArray, dySquaredArray) {
     const length = qArray.length;
     let strength = 0.0;
 
-    let i = 0;
-    while (i < length) {
+    for (let i = 0; i < length; i++) {
         const dx = x - xArray[i];
         const r = dx * dx + dySquaredArray[i];
         strength += k * qArray[i] / Math.max(r, smallestPassingDistanceSquared);
-        i++;
     }
 
     return strength;
-}
-
-
-function drawFieldStrength(strength, buffer, i) {
-    const r = strength * 4;
-    const g = Math.abs(r/10);
-    const b = -r;
-
-    buffer[i + 0] = r;
-    buffer[i + 1] = g;
-    buffer[i + 2] = b;
-    buffer[i + 3] = 255;
-
-    return i + 4;
 }
 
 
@@ -47,24 +31,34 @@ function draw(data) {
     const yLength = yArray.length;
     const dySquaredArray = new Float32Array(yLength);
 
+    // TODO sanity checks on size.
+    const dy = -2.0 / (height - 1);
+    const dx = 2.0 / (width - 1);
+
     let i = 0;
-    let y = 0;
-    while (y < height) {
-        let j = 0;
-        while (j < yLength) {
-            const dy = y - yArray[j];
-            dySquaredArray[j] = dy * dy;
-            j++;
+    let y = 1.0;
+    for (let ry = 0; ry < height; ry++) {
+        for (let j = 0; j < yLength; j++) {
+            const tmp = y - yArray[j];
+            dySquaredArray[j] = tmp * tmp;
         }
 
-        let x = 0;
-        while (x < width) {
+        let x = -1.0;
+        for (let rx = 0; rx < width; rx++) {
             const strength = getFieldStrength(x, y, qArray, xArray, dySquaredArray);
-            i = drawFieldStrength(strength, u8buffer, i);
-            x++;
+
+            // Pixel color for the field strength.
+            // Uint8ClampedArray clamps values to 0-255. I.e. 1000 -> 255, -3.5 -> 0.
+            u8buffer[i + 0] = strength; // Red
+            u8buffer[i + 1] = Math.abs(strength / 15); // Green
+            u8buffer[i + 2] = -strength; // Blue
+            u8buffer[i + 3] = 255; // Alpha
+
+            i += 4;
+            x += dx;
         }
 
-        y++;
+        y += dy;
     }
 
     const endTimestamp = performance.now();

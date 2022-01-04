@@ -1,10 +1,10 @@
 
 
-const k = 50.0;
-const smallestPassingDistanceSquared = 25.0;
+const k = 0.001;
+const smallestPassingDistanceSquared = 0.0003;
 
 
-function updateCharges({mArray, qArray, xArray, yArray, vxArray, vyArray, width, height, friction, steps, dt}) {
+function updateCharges({mArray, qArray, xArray, yArray, vxArray, vyArray, friction, steps, dt}) {
     if (dt <= 0) {
         return;
     }
@@ -20,7 +20,6 @@ function updateCharges({mArray, qArray, xArray, yArray, vxArray, vyArray, width,
         while (j < length) {
             const m = mArray[j];
             if (m !== Infinity) {
-                const q = qArray[j];
                 const x = xArray[j];
                 const y = yArray[j];
 
@@ -59,7 +58,7 @@ function updateCharges({mArray, qArray, xArray, yArray, vxArray, vyArray, width,
                 }
                 /* Manually inlined field strength calculation */
 
-                const tmp2 = k * q * dt / m;
+                const tmp2 = k * qArray[j] * dt / m;
                 const vx = (vxArray[j] += strengthX * tmp2);
                 const vy = (vyArray[j] += strengthY * tmp2);
                 xArray[j] += vx * dt;
@@ -68,7 +67,7 @@ function updateCharges({mArray, qArray, xArray, yArray, vxArray, vyArray, width,
 
             j++;
         }
-        walls(mArray, xArray, yArray, vxArray, vyArray, width, height);
+        walls(mArray, xArray, yArray, vxArray, vyArray);
 
         i++;
     }
@@ -86,7 +85,7 @@ function updateCharges({mArray, qArray, xArray, yArray, vxArray, vyArray, width,
 }
 
 
-function walls(mArray, xArray, yArray, vxArray, vyArray, width, height) {
+function walls(mArray, xArray, yArray, vxArray, vyArray) {
     const length = mArray.length;
 
     let i = 0;
@@ -94,20 +93,20 @@ function walls(mArray, xArray, yArray, vxArray, vyArray, width, height) {
         const m = mArray[i];
         if (m !== Infinity) {
             const x = xArray[i];
-            if (x >= width) {
+            if (x >= 1.0) {
                 vxArray[i] = -0.9 * vxArray[i];
-                xArray[i] = width + width - x;
-            } else if (x <= 0) {
+                xArray[i] = 2.0 - x;
+            } else if (x <= -1.0) {
                 vxArray[i] = -0.9 * vxArray[i];
-                xArray[i] = -x;
+                xArray[i] = -2.0 - x;
             }
             const y = yArray[i];
-            if (y >= height) {
+            if (y >= 1.0) {
                 vyArray[i] = -0.9 * vyArray[i];
-                yArray[i] = height + height - y;
-            } else if (y <= 0) {
+                yArray[i] = 2.0 - y;
+            } else if (y <= -1.0) {
                 vyArray[i] = -0.9 * vyArray[i];
-                yArray[i] = -y;
+                yArray[i] = -2.0 - y;
             }
         }
 

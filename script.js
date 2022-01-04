@@ -7,8 +7,9 @@ class MultiThreadedRenderer {
     // the queue, the bigger the lag, it becomes visible when user interacts with the canvas.
     // TODO: Safari doesn't have hardwareConcurrency, default to 2 workers in this case.
     this.size = Math.min(Math.max((navigator.hardwareConcurrency || 4) - 2, 1), maxThreads || 4);
-    this.width = canvas.width = canvas.clientWidth;
-    this.height = canvas.height = canvas.clientHeight;
+    this.canvas = canvas;
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
     this.context = canvas.getContext('2d');
 
     // Workers can return results out of order, we stamp the tasks with increasing IDs,
@@ -45,6 +46,7 @@ class MultiThreadedRenderer {
 
   drawStats = () => {
     const { context, chargesStats, fpsStats, loadStats, renderStats, physicsStats } = this;
+    const { width, height } = this.canvas;
     const h = 15;
     const x = 5;
     let y = 15;
@@ -57,7 +59,7 @@ class MultiThreadedRenderer {
     };
 
     context.fillStyle = 'white';
-    context.fillText(`canvas: ${this.width}x${this.height}`, x, y);
+    context.fillText(`canvas: ${width}x${height}`, x, y);
     y += h;
     draw('charges', chargesStats.avg, 0);
     draw('fps', fpsStats.avg, 1);
@@ -117,12 +119,15 @@ class MultiThreadedRenderer {
     this.updateStats(qArray.length, this.chargesStats, 1);
     this.lastTimestamp = timestamp;
 
-    const u8buffer = new Uint8ClampedArray(buffer);
-    const imageData = new ImageData(u8buffer, width, height);
-    this.context.putImageData(imageData, 0, 0);
-    this.buffers.push(buffer);
+    const {canvas} = this;
+    if (canvas.width === width && canvas.height === height) {
+      const u8buffer = new Uint8ClampedArray(buffer);
+      const imageData = new ImageData(u8buffer, width, height);
+      this.context.putImageData(imageData, 0, 0);
+      this.drawStats();
+    }
 
-    this.drawStats();
+    this.buffers.push(buffer);
     this.tick();
   };
 
@@ -136,11 +141,15 @@ class MultiThreadedRenderer {
     }
 
     if (tasks.length > 0 && buffers.length > 0 && idleWorkers.size > 0) {
+      const {width, height} = this.canvas;
+
       for (const [workerName, worker] of idleWorkers) {
         const produce = tasks.shift();
         const task = produce();
         const buffer = buffers.shift();
         task.buffer = buffer;
+        task.width = width;
+        task.height = height;
         worker.postMessage(task, [buffer]);
         idleWorkers.delete(workerName);
         busyWorkers.set(workerName, worker);
@@ -179,9 +188,8 @@ class Simulation {
 
   finishFrame = ({qArray, mArray, xArray, yArray, vxArray, vyArray, physicsDuration}) => {
     const {renderer} = this;
-    const {width, height} = renderer;
     this.charges = {qArray, mArray, xArray, yArray, vxArray, vyArray};
-    renderer.push({qArray, xArray, yArray, height, width, physicsDuration}).then(this.initFrame);
+    renderer.push({qArray, xArray, yArray, physicsDuration}).then(this.initFrame);
   };
 
   initFrame = () => {
@@ -190,7 +198,6 @@ class Simulation {
       this.update = undefined;
     }
     const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.charges;
-    const {width, height} = this.renderer;
     const {baseSpeed, timeScale, friction, steps} = this;
     const dt = timeScale * baseSpeed / steps;
     this.physicsWorker.postMessage({
@@ -200,8 +207,6 @@ class Simulation {
       yArray,
       vxArray,
       vyArray,
-      width,
-      height,
       friction,
       steps,
       dt,
@@ -260,10 +265,10 @@ window.addEventListener('load', () => {
   // Function to get mouse pos
   function getMousePos(canvas, evt) {
     const rect = canvas.getBoundingClientRect();
-    let x = evt.x - rect.left;
-    x = Math.max(0, Math.min(canvas.width - 1, x));
-    let y = evt.y - rect.top;
-    y = Math.max(0, Math.min(canvas.height - 1, y));
+    let x = 2.0 * (evt.x - rect.x) / (canvas.width - 1) - 1.0;
+    x = Math.max(-1.0, Math.min(1.0, x));
+    let y = -2.0 * (evt.y - rect.y) / (canvas.height - 1) + 1.0;
+    y = Math.max(-1.0, Math.min(1.0, y));
     return {x, y};
   }
 
