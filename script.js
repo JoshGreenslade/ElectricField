@@ -1,13 +1,14 @@
 
 
 class MultiThreadedRenderer {
-  constructor(canvas, maxThreads) {
+  constructor({canvas, maxThreads, useWasm}) {
     // Physics is O(n^2) and becomes the bottleneck for the number of charges of 20-30 or above.
     // So upping the number of threads beyond some point becomes of little use. Also, the deeper
     // the queue, the bigger the lag, it becomes visible when user interacts with the canvas.
     // TODO: Safari doesn't have hardwareConcurrency, default to 2 workers in this case.
     this.size = Math.min(Math.max((navigator.hardwareConcurrency || 4) - 2, 1), maxThreads || 4);
     this.canvas = canvas;
+    this.useWasm = !!useWasm;
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
     this.context = canvas.getContext('2d');
@@ -132,7 +133,7 @@ class MultiThreadedRenderer {
   };
 
   tick = () => {
-    const {buffers, tasks, resultsBuffer, idleWorkers, busyWorkers} = this;
+    const {buffers, tasks, resultsBuffer, idleWorkers, busyWorkers, useWasm} = this;
 
     if (resultsBuffer.has(this.nextPullId)) {
       const result = resultsBuffer.get(this.nextPullId);
@@ -150,6 +151,7 @@ class MultiThreadedRenderer {
         task.buffer = buffer;
         task.width = width;
         task.height = height;
+        task.useWasm = useWasm;
         worker.postMessage(task, [buffer]);
         idleWorkers.delete(workerName);
         busyWorkers.set(workerName, worker);
@@ -163,8 +165,9 @@ class MultiThreadedRenderer {
 
 
 class Simulation {
-  constructor(renderer) {
+  constructor({renderer, useWasm}) {
     this.renderer = renderer;
+    this.useWasm = !!useWasm;
 
     this.baseSpeed = 0.01;
     this.timeScale = 1;
@@ -198,7 +201,7 @@ class Simulation {
       this.update = undefined;
     }
     const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.charges;
-    const {baseSpeed, timeScale, friction, steps} = this;
+    const {baseSpeed, timeScale, friction, steps, useWasm} = this;
     const dt = timeScale * baseSpeed / steps;
     this.physicsWorker.postMessage({
       qArray,
@@ -210,6 +213,7 @@ class Simulation {
       friction,
       steps,
       dt,
+      useWasm,
     });
   };
 
@@ -259,8 +263,15 @@ window.addEventListener('load', () => {
   const resetInput = document.getElementById("reset");
 
   const canvas = document.querySelector('canvas');
-  const renderer = new MultiThreadedRenderer(canvas, 4);
-  const simulation = new Simulation(renderer);
+  const renderer = new MultiThreadedRenderer({
+    canvas,
+    maxThreads: 4,
+    useWasm: true,
+  });
+  const simulation = new Simulation({
+    renderer,
+    useWasm: true,
+  });
 
   // Function to get mouse pos
   function getMousePos(canvas, evt) {
