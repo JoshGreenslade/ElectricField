@@ -43,6 +43,8 @@ function jsUpdateCharges(length, mArray, qArray, xArray, yArray, vxArray, vyArra
             const tmp2 = vScale * qArray[j] / m;
             let vx = vxArray[j] + strengthX * tmp2;
             let vy = vyArray[j] + strengthY * tmp2;
+            vx *= friction;
+            vy *= friction;
             x += vx * dt;
             y += vy * dt;
 
@@ -66,17 +68,6 @@ function jsUpdateCharges(length, mArray, qArray, xArray, yArray, vxArray, vyArra
             yArray[j] = y;
             vxArray[j] = vx;
             vyArray[j] = vy;
-        }
-    }
-
-    if (friction > 0) {
-        friction = 1 - friction;
-        let i = 0;
-        while (i < length) {
-            vxArray[i] *= friction;
-            vyArray[i] *= friction;
-
-            i++;
         }
     }
 }

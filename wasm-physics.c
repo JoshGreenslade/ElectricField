@@ -9,6 +9,10 @@
 */
 
 
+// WASM has a built in sqrt, declaration to hush up the compiler.
+float sqrtf(float);
+
+
 #define k 0.001f
 #define smallestPassingDistanceSquared 0.0003f
 
@@ -37,7 +41,6 @@ extern void updateCharges(
     const float dt,
     float friction
  ) {
-
     const float vScale = k * dt;
 
     for (int i = 0; i < steps; i++) {
@@ -72,6 +75,8 @@ extern void updateCharges(
             const float tmp2 = vScale * qArray[j] / m;
             float vx = vxArray[j] + strengthX * tmp2;
             float vy = vyArray[j] + strengthY * tmp2;
+            vx *= friction;
+            vy *= friction;
             x += vx * dt;
             y += vy * dt;
 
@@ -95,14 +100,6 @@ extern void updateCharges(
             yArray[j] = y;
             vxArray[j] = vx;
             vyArray[j] = vy;
-        }
-    }
-
-    if (friction > 0.0f) {
-        friction = 1.0f - friction;
-        for (int i = 0; i < length; i++) {
-            vxArray[i] *= friction;
-            vyArray[i] *= friction;
         }
     }
 }

@@ -210,7 +210,8 @@ class Simulation {
       yArray,
       vxArray,
       vyArray,
-      friction,
+      // This introduces a rounding error accumulating over internal steps of simulation.
+      friction: friction > 0 ? Math.pow(1 - friction, 1/steps) : 1,
       steps,
       dt,
       useWasm,

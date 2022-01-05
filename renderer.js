@@ -91,8 +91,6 @@ WebAssembly.instantiateStreaming(fetch('wasm-renderer.wasm'), {}).then(obj => {
 
         new Uint32Array(buffer).set(sceneBuffer);
     };
-
-    console.log('wasm renderer loaded');
 });
 
 
