@@ -44,16 +44,40 @@ canvas {
     }
 }
 
-.hidden {
-    display: none
+td.label {
+    text-align: right;
+    white-space: nowrap;
+}
+
+td.input {
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
+td.input input {
+    min-width: 15em;
+}
+
+td.output {
+    text-align: left;
+}
+
+td.pause {
+    text-align: left;
+}
+
+td.reset {
+    text-align: right;
+}
+
+button {
+    min-width: 5em;
 }
 
 footer {
-    margin: auto;
-    margin-top: 5rem;
+    margin: 5rem auto auto;
     width: 50%;
     text-align: center;
-
 }
 
 @media (max-width: 450px){

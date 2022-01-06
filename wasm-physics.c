@@ -13,7 +13,7 @@
 float sqrtf(float);
 
 
-#define k 0.001f
+#define k 0.00003f
 #define smallestPassingDistanceSquared 0.0003f
 
 
@@ -37,13 +37,14 @@ extern void updateCharges(
     float* yArray,
     float* vxArray,
     float* vyArray,
-    const int steps,
+    const int integrationSteps,
     const float dt,
-    float friction
+    const float mediumFriction,
+    const float wallsElasticity
  ) {
     const float vScale = k * dt;
 
-    for (int i = 0; i < steps; i++) {
+    for (int i = 0; i < integrationSteps; i++) {
         for (int j = 0; j < length; j++) {
             const float m = mArray[j];
             if (isinf(m)) {
@@ -75,24 +76,24 @@ extern void updateCharges(
             const float tmp2 = vScale * qArray[j] / m;
             float vx = vxArray[j] + strengthX * tmp2;
             float vy = vyArray[j] + strengthY * tmp2;
-            vx *= friction;
-            vy *= friction;
+            vx *= mediumFriction;
+            vy *= mediumFriction;
             x += vx * dt;
             y += vy * dt;
 
             /* walls */
             if (x >= 1.0f) {
-                vx *= -0.9f;
+                vx *= -wallsElasticity;
                 x = 2.0f - x;
             } else if (x <= -1.0f) {
-                vx *= -0.9f;
+                vx *= -wallsElasticity;
                 x = -2.0f - x;
             }
             if (y >= 1.0) {
-                vy *= -0.9f;
+                vy *= -wallsElasticity;
                 y = 2.0f - y;
             } else if (y <= -1.0f) {
-                vy *= -0.9f;
+                vy *= -wallsElasticity;
                 y = -2.0f - y;
             }
 

@@ -2,7 +2,7 @@
 
 class MultiThreadedRenderer {
   constructor({canvas, maxThreads, useWasm}) {
-    // Physics is O(n^2) and becomes the bottleneck for the number of charges of 20-30 or above.
+    // Physics is O(n^2) and becomes the bottleneck for the number of particles of 20-30 or above.
     // So upping the number of threads beyond some point becomes of little use. Also, the deeper
     // the queue, the bigger the lag, it becomes visible when user interacts with the canvas.
     // TODO: Safari doesn't have hardwareConcurrency, default to 2 workers in this case.
@@ -164,18 +164,135 @@ class MultiThreadedRenderer {
 }
 
 
+class Configuration {
+  defaultTimeScale = 1;
+  defaultMediumFriction = 0;
+  defaultIntegrationSteps = 1000;
+  defaultParticleMass = 1;
+  defaultParticleCharge = 500;
+  defaultWallsElasticity = 0.9;
+
+  constructor() {
+    this._timeScale = this.defaultTimeScale;
+    this._mediumFriction = this.defaultMediumFriction;
+    this._integrationSteps = this.defaultIntegrationSteps;
+    this._particleMass = this.defaultParticleMass;
+    this._particleCharge = this.defaultParticleCharge;
+    this._wallsElasticity = this.defaultWallsElasticity;
+
+    this.controls = {};
+  }
+
+  bind = ({id, toValue, toOutput, toInput}) => {
+    const [first, ...rest] = id.split(/\W/);
+    const words = [first].concat(rest.map((s) => s.substring(0, 1).toUpperCase() + s.substring(1)));
+    const name = `${words.join('')}`;
+    if (!(name in this)) {
+      return;
+    }
+
+    toValue = toValue || parseFloat;
+    toOutput = toOutput || ((value) => value);
+    toInput = toInput || ((value) => value);
+
+    const input = document.getElementById(`${id}-input`);
+    const output = document.getElementById(`${id}-output`);
+
+    const setter = (inputValue) => {
+      this[name] = toValue(inputValue);
+      input.value = toInput(this[name]);
+      output.value = toOutput(this[name]);
+    };
+
+    input.addEventListener('input', (e) => {
+      setter(e.target.value);
+      e.preventDefault();
+    });
+
+    setter(); // Set the default at first
+
+    this.controls[name] = setter;
+  };
+
+  reset = () => {
+    Object.values(this.controls).forEach((setter) => setter());
+  };
+
+  validate = (value, minValue, maxValue, defaultValue, precision) => {
+    if (typeof value !== 'number') {
+      value = Number(value);
+    }
+    if (typeof value !== 'number' || isNaN(value)) {
+      value = defaultValue;
+    }
+    if (precision) {
+      value = Number(value.toFixed(precision));
+    }
+    return Math.max(Math.min(value, maxValue), minValue);
+  }
+
+  get timeScale() {
+    return this._timeScale;
+  }
+
+  set timeScale(value) {
+    this._timeScale = this.validate(value, 0.01, 10, 1, 2);
+  }
+
+  get mediumFriction() {
+    return this._mediumFriction;
+  }
+
+  set mediumFriction(value) {
+    this._mediumFriction = this.validate(value, 0.0, 1, 0, 3);
+  }
+
+  get wallsElasticity() {
+    return this._wallsElasticity;
+  }
+
+  set wallsElasticity(value) {
+    this._wallsElasticity = this.validate(value, 0, 1, 0.9, 2);
+  }
+
+  get particleMass() {
+    return this._particleMass;
+  }
+
+  set particleMass(value) {
+    this._particleMass = this.validate(value, 0.1, 10, 1, 3);
+    if (this._particleMass === 10) {
+      this._particleMass = Infinity;
+    }
+  }
+
+  get particleCharge() {
+    return this._particleCharge;
+  }
+
+  set particleCharge(value) {
+    this._particleCharge = this.validate(value, -1000, 1000, 500, 0);
+  }
+
+  get integrationSteps() {
+    return this._integrationSteps;
+  }
+
+  set integrationSteps(value) {
+    this._integrationSteps = this.validate(value, 100, 3000, 1000, 0);
+  }
+}
+
+
 class Simulation {
-  constructor({renderer, useWasm}) {
+  constructor({configuration, renderer, useWasm}) {
+    this.configuration = configuration;
     this.renderer = renderer;
     this.useWasm = !!useWasm;
+    this.paused = false;
 
     this.baseSpeed = 0.01;
-    this.timeScale = 1;
-    this.friction = 0;
-    this.charge = 800;
-    this.mass = 1;
-    this.steps = 1000;
-    this.charges = {
+    this.particles = {
       qArray: new Float32Array(0),
       mArray: new Float32Array(0),
       xArray: new Float32Array(0),
@@ -191,7 +308,7 @@ class Simulation {
 
   finishFrame = ({qArray, mArray, xArray, yArray, vxArray, vyArray, physicsDuration}) => {
     const {renderer} = this;
-    this.charges = {qArray, mArray, xArray, yArray, vxArray, vyArray};
+    this.particles = {qArray, mArray, xArray, yArray, vxArray, vyArray};
     renderer.push({qArray, xArray, yArray, physicsDuration}).then(this.initFrame);
   };
 
@@ -200,9 +317,11 @@ class Simulation {
       this.update();
       this.update = undefined;
     }
-    const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.charges;
-    const {baseSpeed, timeScale, friction, steps, useWasm} = this;
-    const dt = timeScale * baseSpeed / steps;
+
+    const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
+    const {baseSpeed, useWasm} = this;
+    const {timeScale, integrationSteps, mediumFriction, wallsElasticity} = this.configuration;
+    const dt = this.paused ? 0 : (timeScale * baseSpeed / integrationSteps);
     this.physicsWorker.postMessage({
       qArray,
       mArray,
@@ -211,16 +330,17 @@ class Simulation {
       vxArray,
       vyArray,
       // This introduces a rounding error accumulating over internal steps of simulation.
-      friction: friction > 0 ? Math.pow(1 - friction, 1/steps) : 1,
-      steps,
+      mediumFriction: mediumFriction > 0 ? Math.pow(1 - mediumFriction, 1 / integrationSteps) : 1,
+      integrationSteps,
       dt,
+      wallsElasticity,
       useWasm,
     });
   };
 
   reset = () => {
     this.update = () => {
-      this.charges = {
+      this.particles = {
         qArray: new Float32Array(0),
         mArray: new Float32Array(0),
         xArray: new Float32Array(0),
@@ -231,12 +351,11 @@ class Simulation {
     };
   }
 
-  addCharge = (x, y, positive) => {
+  addParticle = (x, y, charge, mass) => {
     this.update = () => {
-      const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.charges;
-      const {charge, mass} = this;
-      this.charges = {
-        qArray: Float32Array.of(...qArray, positive ? charge : -charge),
+      const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
+      this.particles = {
+        qArray: Float32Array.of(...qArray, charge),
         mArray: Float32Array.of(...mArray, mass),
         xArray: Float32Array.of(...xArray, x),
         yArray: Float32Array.of(...yArray, y),
@@ -249,20 +368,7 @@ class Simulation {
 
 
 window.addEventListener('load', () => {
-  // Get the inputs
-  const positiveInput = document.getElementById("positive");
-  const timescaleInput = document.getElementById("timescale");
-  const timescaleOutput = document.getElementById("timescale_output");
-  const physicsSubsamplesInput = document.getElementById("physicssubsamples");
-  const physicsSubsamplesOutput = document.getElementById("physicssubsamples_output");
-  const frictionInput = document.getElementById("friction");
-  const frictionOutput = document.getElementById("friction_output");
-  const chargeInput = document.getElementById("charge");
-  const chargeOutput = document.getElementById("charge_output");
-  const massInput = document.getElementById("mass");
-  const massOutput = document.getElementById("mass_output");
-  const resetInput = document.getElementById("reset");
-
+  const configuration = new Configuration();
   const canvas = document.querySelector('canvas');
   const renderer = new MultiThreadedRenderer({
     canvas,
@@ -270,6 +376,7 @@ window.addEventListener('load', () => {
     useWasm: true,
   });
   const simulation = new Simulation({
+    configuration,
     renderer,
     useWasm: true,
   });
@@ -286,48 +393,57 @@ window.addEventListener('load', () => {
 
   canvas.addEventListener('mousedown', (e) => {
     const {x, y} = getMousePos(canvas, e);
-    const positive = e.button === 0 && positiveInput.checked;
-    simulation.addCharge(x, y, positive);
+    const particleCharge = (e.button !== 0) ? -configuration.particleCharge : configuration.particleCharge;
+    if (particleCharge !== 0) {
+      simulation.addParticle(x, y, particleCharge, configuration.particleMass);
+    }
     e.preventDefault();
   });
 
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
-  // === Control Listeners
-  timescaleInput.addEventListener('input', function (e) {
-    simulation.timeScale = Math.pow(10, e.target.value);
-    if (simulation.timeScale <= 0.01) {
-      simulation.timeScale = 0;
-    }
-    timescaleOutput.value = simulation.timeScale > 0 ? `${simulation.timeScale.toFixed(3)}x` : 'paused';
+  configuration.bind({
+    id: 'integration-steps',
+  });
+  configuration.bind({
+    id: 'time-scale',
+    toValue: (input) => Math.pow(10, parseFloat(input)),
+    toInput: (timeScale) => Math.log10(timeScale),
+    toOutput: (timeScale) => `x${timeScale}`,
+  });
+  configuration.bind({
+    id: 'particle-charge',
+    toOutput: (particleCharge) => (particleCharge !== 0) ? `${particleCharge}` : '0 ??',
+  });
+  configuration.bind({
+    id: 'particle-mass',
+    toValue: (input) => {
+      const particleMass = Math.pow(10, parseFloat(input));
+      return particleMass >= 10 ? Infinity : particleMass;
+    },
+    toInput: (particleMass) => (particleMass === Infinity) ? 10 : Math.log10(particleMass),
+  });
+  configuration.bind({
+    id: 'medium-friction',
+    toValue: (input) => (Math.pow(2, parseFloat(input)) - 1) / 1023,
+    toInput: (mediumFriction) => Math.log2(mediumFriction * 1023 + 1),
+  });
+  configuration.bind({
+    id: 'walls-elasticity',
   });
 
-  physicsSubsamplesInput.addEventListener('input', function (e) {
-    simulation.steps = parseInt(e.target.value);
-    physicsSubsamplesOutput.value = simulation.steps;
-  });
-
-  frictionInput.addEventListener('input', function (e) {
-    simulation.friction = parseFloat(e.target.value);
-    frictionOutput.value = simulation.friction.toFixed(3);
-  });
-
-  chargeInput.addEventListener('input', function (e) {
-    simulation.charge = parseFloat(e.target.value);
-    chargeOutput.value = simulation.charge;
-  });
-
-  massInput.addEventListener('input', function (e) {
-    simulation.mass = Math.pow(10, e.target.value);
-    if (simulation.mass >= 1000) {
-      simulation.mass = Infinity;
-    }
-    massOutput.value = simulation.mass.toFixed(2);
-  });
-
-  resetInput.addEventListener('click', function (e) {
+  const resetButton = document.getElementById("reset");
+  resetButton.addEventListener('click', (e) => {
+    configuration.reset();
     simulation.reset();
   });
+
+  const pauseButton = document.getElementById("pause");
+  pauseButton.addEventListener('click', (e) => {
+    simulation.paused = !simulation.paused;
+    pauseButton.textContent = simulation.paused ? "Play" : "Pause";
+  });
+  pauseButton.textContent = simulation.paused ? "Play" : "Pause";
 
   simulation.initFrame();
 });
