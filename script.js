@@ -31,7 +31,7 @@ class MultiThreadedRenderer {
     this.resultsBuffer = new Map();
 
     this.lastTimestamp = undefined;
-    this.chargesStats = this.initStats();
+    this.particlesStats = this.initStats();
     this.fpsStats = this.initStats((sum, count) => 1000 * count / sum);
     this.loadStats = this.initStats();
     this.renderStats = this.initStats();
@@ -46,7 +46,7 @@ class MultiThreadedRenderer {
   });
 
   drawStats = () => {
-    const { context, chargesStats, fpsStats, loadStats, renderStats, physicsStats } = this;
+    const { context, particlesStats, fpsStats, loadStats, renderStats, physicsStats } = this;
     const { width, height } = this.canvas;
     const h = 15;
     const x = 5;
@@ -62,7 +62,7 @@ class MultiThreadedRenderer {
     context.fillStyle = 'white';
     context.fillText(`canvas: ${width}x${height}`, x, y);
     y += h;
-    draw('charges', chargesStats.avg, 0);
+    draw('particles', particlesStats.avg, 0);
     draw('fps', fpsStats.avg, 1);
     context.fillText(`render threads: ${this.size}`, x, y);
     y += h;
@@ -117,7 +117,7 @@ class MultiThreadedRenderer {
     this.updateStats(physicsDuration, this.physicsStats, 30);
     this.updateStats(100.0 * this.busyWorkers.size / this.size, this.loadStats, 30);
     this.updateStats(renderDuration, this.renderStats, 30);
-    this.updateStats(qArray.length, this.chargesStats, 1);
+    this.updateStats(qArray.length, this.particlesStats, 1);
     this.lastTimestamp = timestamp;
 
     const {canvas} = this;

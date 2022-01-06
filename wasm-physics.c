@@ -30,77 +30,107 @@ int isinf(float x) {
 
 
 extern void updateCharges(
-    const int length,
-    const float* mArray,
-    const float* qArray,
-    float* xArray,
-    float* yArray,
-    float* vxArray,
-    float* vyArray,
+    const int particleNumber,
+    float* buffer,
     const int integrationSteps,
     const float dt,
     const float mediumFriction,
     const float wallsElasticity
  ) {
+    int offset = 0;
+    const float* curMArray = buffer + offset;
+    offset += particleNumber;
+    const float* curQArray = buffer + offset;
+    offset += particleNumber;
+    float* curXArray = buffer + offset;
+    offset += particleNumber;
+    float* curYArray = buffer + offset;
+    offset += particleNumber;
+    float* curVxArray = buffer + offset;
+    offset += particleNumber;
+    float* curVyArray = buffer + offset;
+    offset += particleNumber;
+    float* nextXArray = buffer + offset;
+    offset += particleNumber;
+    float* nextYArray = buffer + offset;
+    offset += particleNumber;
+    float* nextVxArray = buffer + offset;
+    offset += particleNumber;
+    float* nextVyArray = buffer + offset;
+
     const float vScale = k * dt;
 
     for (int i = 0; i < integrationSteps; i++) {
-        for (int j = 0; j < length; j++) {
-            const float m = mArray[j];
-            if (isinf(m)) {
-                continue;
-            }
+        for (int j = 0; j < particleNumber; j++) {
+            const float m = curMArray[j];
+            const float q = curQArray[j];
+            float x = curXArray[j];
+            float y = curYArray[j];
+            float vx = curVxArray[j];
+            float vy = curVyArray[j];
 
-            float x = xArray[j];
-            float y = yArray[j];
+            if (!isinf(m)) {
+                /* Manually inlined field strength calculation */
+                float strengthX = 0.0f;
+                float strengthY = 0.0f;
 
-            /* Manually inlined field strength calculation */
-            float strengthX = 0.0f;
-            float strengthY = 0.0f;
+                for (int l = 0; l < particleNumber; l++) {
+                    float dx = x - curXArray[l];
+                    float dy = y - curYArray[l];
+                    float dx2 = dx * dx;
+                    float dy2 = dy * dy;
+                    float r2 = dx2 + dy2;
 
-            for (int l = 0; l < length; l++) {
-                float dx = x - xArray[l];
-                float dy = y - yArray[l];
-                float dx2 = dx * dx;
-                float dy2 = dy * dy;
-                float r2 = dx2 + dy2;
+                    if (r2 >= smallestPassingDistanceSquared) {
+                        float tmp = curQArray[l] / r2 / sqrtf(r2);
+                        strengthX += dx * tmp;
+                        strengthY += dy * tmp;
+                    }
+                }
+                /* Manually inlined field strength calculation */
 
-                if (r2 >= smallestPassingDistanceSquared) {
-                    float tmp = qArray[l] / r2 / sqrtf(r2);
-                    strengthX += dx * tmp;
-                    strengthY += dy * tmp;
+                const float tmp2 = vScale * q / m;
+                vx += strengthX * tmp2;
+                vy += strengthY * tmp2;
+                vx *= mediumFriction;
+                vy *= mediumFriction;
+                x += vx * dt;
+                y += vy * dt;
+
+                /* walls */
+                if (x >= 1.0f) {
+                    vx *= -wallsElasticity;
+                    x = 2.0f - x;
+                } else if (x <= -1.0f) {
+                    vx *= -wallsElasticity;
+                    x = -2.0f - x;
+                }
+                if (y >= 1.0) {
+                    vy *= -wallsElasticity;
+                    y = 2.0f - y;
+                } else if (y <= -1.0f) {
+                    vy *= -wallsElasticity;
+                    y = -2.0f - y;
                 }
             }
-            /* Manually inlined field strength calculation */
 
-            const float tmp2 = vScale * qArray[j] / m;
-            float vx = vxArray[j] + strengthX * tmp2;
-            float vy = vyArray[j] + strengthY * tmp2;
-            vx *= mediumFriction;
-            vy *= mediumFriction;
-            x += vx * dt;
-            y += vy * dt;
-
-            /* walls */
-            if (x >= 1.0f) {
-                vx *= -wallsElasticity;
-                x = 2.0f - x;
-            } else if (x <= -1.0f) {
-                vx *= -wallsElasticity;
-                x = -2.0f - x;
-            }
-            if (y >= 1.0) {
-                vy *= -wallsElasticity;
-                y = 2.0f - y;
-            } else if (y <= -1.0f) {
-                vy *= -wallsElasticity;
-                y = -2.0f - y;
-            }
-
-            xArray[j] = x;
-            yArray[j] = y;
-            vxArray[j] = vx;
-            vyArray[j] = vy;
+            nextXArray[j] = x;
+            nextYArray[j] = y;
+            nextVxArray[j] = vx;
+            nextVyArray[j] = vy;
         }
+
+        float* tmp1 = curXArray;
+        curXArray = nextXArray;
+        nextXArray = tmp1;
+        float* tmp2 = curYArray;
+        curYArray = nextYArray;
+        nextYArray = tmp2;
+        float* tmp3 = curVxArray;
+        curVxArray = nextVxArray;
+        nextVxArray = tmp3;
+        float* tmp4 = curVyArray;
+        curVyArray = nextVyArray;
+        nextVyArray = tmp4;
     }
 }
