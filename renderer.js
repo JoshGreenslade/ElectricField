@@ -50,7 +50,7 @@ function jsRenderScene(width, height, buffer, length, qArray, xArray, yArray) {
 let wasmRenderScene = undefined;
 
 
-WebAssembly.instantiateStreaming(fetch('wasm-renderer.wasm'), {}).then(obj => {
+WebAssembly.instantiateStreaming(fetch('renderer.wasm'), {}).then(obj => {
     const {renderScene, memory} = obj.instance.exports;
 
     wasmRenderScene = (width, height, buffer, length, qArray, xArray, yArray) => {
@@ -91,6 +91,8 @@ WebAssembly.instantiateStreaming(fetch('wasm-renderer.wasm'), {}).then(obj => {
 
         new Uint32Array(buffer).set(sceneBuffer);
     };
+
+    console.log('WASM render backend loaded');
 });
 
 

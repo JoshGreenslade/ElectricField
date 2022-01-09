@@ -5,12 +5,12 @@
 
   clang --target=wasm32 --optimize=4 -nostdlib \
     -Wl,--export-all -Wl,--no-entry -Wl,--allow-undefined -Wall \
-    --output wasm-physics.wasm wasm-physics.c
+    --output physics.wasm physics.c
 */
 
 
 // WASM has a built in sqrt, declaration to hush up the compiler.
-float sqrtf(float);
+extern float sqrtf(float);
 
 
 #define k 0.00003f
@@ -18,7 +18,7 @@ float sqrtf(float);
 
 
 // From https://git.musl-libc.org/cgit/musl/tree/src/math/__fpclassifyf.c
-int isinf(float x) {
+static int isinf(float x) {
     /* Clang optimizes this coercion to sth that looks like a no-op:
         (i32.reinterpret_f32
          (local.get $0))
@@ -29,7 +29,7 @@ int isinf(float x) {
 }
 
 
-extern void updateCharges(
+extern void euler(
     const int particleNumber,
     float* buffer,
     const int integrationSteps,

@@ -5,7 +5,7 @@
 
   clang --target=wasm32 --optimize=4 -nostdlib \
     -Wl,--export-all -Wl,--no-entry -Wl,--allow-undefined -Wall \
-    --output wasm-renderer.wasm wasm-renderer.c
+    --output renderer.wasm renderer.c
 */
 
 

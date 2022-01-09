@@ -62,14 +62,6 @@ td.output {
     text-align: left;
 }
 
-td.pause {
-    text-align: left;
-}
-
-td.reset {
-    text-align: right;
-}
-
 button {
     min-width: 5em;
 }

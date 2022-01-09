@@ -167,7 +167,8 @@ class MultiThreadedRenderer {
 class Configuration {
   defaultTimeScale = 1;
   defaultMediumFriction = 0;
-  defaultIntegrationSteps = 1000;
+  defaultIntegrationSteps = 300;
+  defaultIntegrationMethod = 'euler';
   defaultParticleMass = 1;
   defaultParticleCharge = 500;
   defaultWallsElasticity = 0.9;
@@ -176,6 +177,7 @@ class Configuration {
     this._timeScale = this.defaultTimeScale;
     this._mediumFriction = this.defaultMediumFriction;
     this._integrationSteps = this.defaultIntegrationSteps;
+    this._integrationMethod = this.defaultIntegrationMethod;
     this._particleMass = this.defaultParticleMass;
     this._particleCharge = this.defaultParticleCharge;
     this._wallsElasticity = this.defaultWallsElasticity;
@@ -211,11 +213,30 @@ class Configuration {
 
     setter(); // Set the default at first
 
-    this.controls[name] = setter;
+    this.controls[name] = {setter, toValue, toOutput, toInput};
   };
 
   reset = () => {
-    Object.values(this.controls).forEach((setter) => setter());
+    Object.values(this.controls).forEach(({setter}) => setter());
+  };
+
+  load = (parameters) => {
+    const {controls} = this;
+    Object.keys(parameters).forEach((name) => {
+      if (name in controls) {
+        const {setter, toValue, toOutput, toInput} = controls[name];
+        setter(toInput(parameters[name]));
+      }
+    });
+  };
+
+  save = () => {
+    const {controls} = this;
+    const parameters = {};
+    Object.keys(controls).forEach((name) => {
+      parameters[name] = this[`_${name}`];
+    });
+    return parameters;
   };
 
   validate = (value, minValue, maxValue, defaultValue, precision) => {
@@ -236,7 +257,7 @@ class Configuration {
   }
 
   set timeScale(value) {
-    this._timeScale = this.validate(value, 0.01, 10, 1, 2);
+    this._timeScale = this.validate(value, 0.01, 10, this.defaultTimeScale, 2);
   }
 
   get mediumFriction() {
@@ -244,7 +265,7 @@ class Configuration {
   }
 
   set mediumFriction(value) {
-    this._mediumFriction = this.validate(value, 0.0, 1, 0, 3);
+    this._mediumFriction = this.validate(value, 0.0, 1, this.defaultMediumFriction, 3);
   }
 
   get wallsElasticity() {
@@ -252,7 +273,7 @@ class Configuration {
   }
 
   set wallsElasticity(value) {
-    this._wallsElasticity = this.validate(value, 0, 1, 0.9, 2);
+    this._wallsElasticity = this.validate(value, 0, 1, this.defaultWallsElasticity, 2);
   }
 
   get particleMass() {
@@ -260,7 +281,7 @@ class Configuration {
   }
 
   set particleMass(value) {
-    this._particleMass = this.validate(value, 0.1, 10, 1, 3);
+    this._particleMass = this.validate(value, 0.1, 10, this.defaultParticleMass, 3);
     if (this._particleMass === 10) {
       this._particleMass = Infinity;
     }
@@ -271,7 +292,7 @@ class Configuration {
   }
 
   set particleCharge(value) {
-    this._particleCharge = this.validate(value, -1000, 1000, 500, 0);
+    this._particleCharge = this.validate(value, -1000, 1000, this.defaultParticleCharge, 0);
   }
 
   get integrationSteps() {
@@ -279,7 +300,18 @@ class Configuration {
   }
 
   set integrationSteps(value) {
-    this._integrationSteps = this.validate(value, 100, 3000, 1000, 0);
+    this._integrationSteps = this.validate(value, 1, 1000, this.defaultIntegrationSteps, 0);
+  }
+
+  get integrationMethod() {
+    return this._integrationMethod;
+  }
+
+  set integrationMethod(value) {
+    if (value !== 'euler' && value !== 'midpoint' && value !== 'heun' && value !== 'rk4') {
+      value = this.defaultIntegrationMethod;
+    }
+    this._integrationMethod = value;
   }
 }
 
@@ -320,7 +352,7 @@ class Simulation {
 
     const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
     const {baseSpeed, useWasm} = this;
-    const {timeScale, integrationSteps, mediumFriction, wallsElasticity} = this.configuration;
+    const {timeScale, integrationMethod, integrationSteps, mediumFriction, wallsElasticity} = this.configuration;
     const dt = this.paused ? 0 : (timeScale * baseSpeed / integrationSteps);
     this.physicsWorker.postMessage({
       qArray,
@@ -331,6 +363,7 @@ class Simulation {
       vyArray,
       // This introduces a rounding error accumulating over internal steps of simulation.
       mediumFriction: mediumFriction > 0 ? Math.pow(1 - mediumFriction, 1 / integrationSteps) : 1,
+      integrationMethod,
       integrationSteps,
       dt,
       wallsElasticity,
@@ -349,7 +382,51 @@ class Simulation {
         vyArray: new Float32Array(0),
       };
     };
-  }
+  };
+
+  load = (particles) => {
+    const qArray = [];
+    const mArray = [];
+    const xArray = [];
+    const yArray = [];
+    const vxArray = [];
+    const vyArray = [];
+    particles.forEach(({q, m, x, y, vx, vy}) => {
+      qArray.push(q);
+      mArray.push(m === null ? Infinity : m);
+      xArray.push(x);
+      yArray.push(y);
+      vxArray.push(vx);
+      vyArray.push(vy);
+    });
+
+    this.update = () => {
+      this.particles = {
+        qArray: new Float32Array(qArray),
+        mArray: new Float32Array(mArray),
+        xArray: new Float32Array(xArray),
+        yArray: new Float32Array(yArray),
+        vxArray: new Float32Array(vxArray),
+        vyArray: new Float32Array(vyArray),
+      };
+    };
+  };
+
+  save = () => {
+    const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
+    const particles = [];
+    qArray.forEach((q, i) => {
+      particles.push({
+        q,
+        m: mArray[i],
+        x: xArray[i],
+        y: yArray[i],
+        vx: vxArray[i],
+        vy: vyArray[i],
+      });
+    });
+    return particles;
+  };
 
   addParticle = (x, y, charge, mass) => {
     this.update = () => {
@@ -363,7 +440,21 @@ class Simulation {
         vyArray: Float32Array.of(...vyArray, 0),
       };
     };
-  }
+  };
+}
+
+
+function download(filename, data) {
+  const blob = new Blob(
+    [JSON.stringify(data, undefined, "  ")],
+    {type: 'application/json;charset=utf-8;'},
+  );
+  const url = URL.createObjectURL(blob);
+  const a = document.getElementById("file-download");
+  a.setAttribute("href", url);
+  a.setAttribute("download", filename);
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 
@@ -378,7 +469,7 @@ window.addEventListener('load', () => {
   const simulation = new Simulation({
     configuration,
     renderer,
-    useWasm: true,
+    useWasm: false,
   });
 
   // Function to get mouse pos
@@ -404,6 +495,19 @@ window.addEventListener('load', () => {
 
   configuration.bind({
     id: 'integration-steps',
+  });
+  configuration.bind({
+    id: 'integration-method',
+    toValue: (input) => ({
+      1: 'midpoint',
+      2: 'heun',
+      3: 'rk4',
+    }[input] || 'euler'),
+    toInput: (integrationMethod) => ({
+      midpoint: 1,
+      heun: 2,
+      rk4: 3,
+    }[integrationMethod] || 0),
   });
   configuration.bind({
     id: 'time-scale',
@@ -444,6 +548,35 @@ window.addEventListener('load', () => {
     pauseButton.textContent = simulation.paused ? "Play" : "Pause";
   });
   pauseButton.textContent = simulation.paused ? "Play" : "Pause";
+
+  const saveButton = document.getElementById("save");
+  saveButton.addEventListener('click', (e) => {
+    simulation.paused = true;
+    pauseButton.textContent = "Play";
+    const data = {
+      configuration: configuration.save(),
+      particles: simulation.save(),
+    };
+    download("electric-field-simulation.json", data);
+  });
+
+  const fileInput = document.getElementById('file-input');
+  fileInput.addEventListener('change', (e) => {
+    fileInput.files[0].text().then((text) => {
+      const data = JSON.parse(text);
+      if ('configuration' in data && 'particles' in data) {
+        configuration.load(data.configuration);
+        simulation.load(data.particles);
+      }
+    });
+  });
+
+  const loadButton = document.getElementById("load");
+  loadButton.addEventListener('click', (e) => {
+    simulation.paused = true;
+    pauseButton.textContent = "Play";
+    fileInput.click();
+  });
 
   simulation.initFrame();
 });
