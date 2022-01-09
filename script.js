@@ -322,6 +322,7 @@ class Simulation {
     this.renderer = renderer;
     this.useWasm = !!useWasm;
     this.paused = false;
+    this.step = false;
 
     this.baseSpeed = 0.01;
     this.particles = {
@@ -353,7 +354,8 @@ class Simulation {
     const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
     const {baseSpeed, useWasm} = this;
     const {timeScale, integrationMethod, integrationSteps, mediumFriction, wallsElasticity} = this.configuration;
-    const dt = this.paused ? 0 : (timeScale * baseSpeed / integrationSteps);
+    const dt = (!this.paused || this.step) ? (timeScale * baseSpeed / integrationSteps) : 0;
+    this.step = false;
     this.physicsWorker.postMessage({
       qArray,
       mArray,
@@ -545,9 +547,16 @@ window.addEventListener('load', () => {
   const pauseButton = document.getElementById("pause");
   pauseButton.addEventListener('click', (e) => {
     simulation.paused = !simulation.paused;
-    pauseButton.textContent = simulation.paused ? "Play" : "Pause";
+    pauseButton.textContent = simulation.paused ? "Run" : "Pause";
   });
-  pauseButton.textContent = simulation.paused ? "Play" : "Pause";
+  pauseButton.textContent = simulation.paused ? "Run" : "Pause";
+
+  const stepButton = document.getElementById("step");
+  stepButton.addEventListener('click', (e) => {
+    simulation.paused = true;
+    simulation.step = true;
+    pauseButton.textContent = "Run";
+  });
 
   const saveButton = document.getElementById("save");
   saveButton.addEventListener('click', (e) => {
