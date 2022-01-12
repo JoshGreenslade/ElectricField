@@ -1,126 +1,114 @@
-var canvas
-var ctx
-var charges
-var imgData
-var pixPerCell
-var lastTime = 0
-
-const k = 50
-const smallestPassingDistanceSquared = 1 ** 2
 
 
-onmessage = function (e) {
-    if ('update' in e.data) {
-        for (var key of e.data.update) {
-            this[key] = e.data[key]
+const k = 0.001;
+const smallestPassingDistanceSquared = 0.00003;
+
+
+function jsRenderScene(width, height, buffer, length, qArray, xArray, yArray) {
+    const u8buffer = new Uint8ClampedArray(buffer);
+    const dySquaredArray = new Float32Array(length);
+
+    // TODO sanity checks on size.
+    const dy = -2.0 / (height - 1);
+    const dx = 2.0 / (width - 1);
+
+    let i = 0;
+    let y = 1.0;
+    for (let ry = 0; ry < height; ry++) {
+
+        for (let j = 0; j < length; j++) {
+            const tmp = y - yArray[j];
+            dySquaredArray[j] = tmp * tmp;
         }
-    } else {
-        canvas = e.data.canvas;
-        ctx = canvas.getContext('2d');
-        pixPerCell = e.data.pixPerCell;
-        charges = e.data.charges;
-        imgData = ctx.getImageData(0,0, canvas.width, canvas.height)
-        loop()
-    }
-}
 
-function getFieldVector(x, y) {
-    // Get the field vector and strength at an abritrary position
-    // in the grid
-    vec = {x:0, y:0, strength:0}
-    for (var charge of charges) {
-        dx = (x - charge.x)
-        dx2 = dx * dx;
-        dy = (y - charge.y)
-        dy2 = dy * dy
-        r2 = dx2 + dy2
-        // Check to ensure r2 is > 0
-        if (r2 < smallestPassingDistanceSquared) r2 = smallestPassingDistanceSquared
-        
-        // Calculate the field strength due to this charge
-        strength = k * charge.q / (r2)
+        let x = -1.0;
+        for (let rx = 0; rx < width; rx++) {
 
-        // Add it to the field vectors
-        vec.x += strength * (dx2/r2) * Math.sign(dx)
-        vec.y += strength * (dy2/r2) * Math.sign(dy)
-        vec.strength += strength
-    }
-
-    return vec
-}
-
-
-function loop() {
-    draw()
-    requestAnimationFrame(loop)
-}
-
-function getColor(dist) {
-    return [dist*4, Math.abs(4*dist/10) , -1*dist*4]
-}
-
-
-function draw() {
-    // Clear the canvas
-    ctx.clearRect(0,0, canvas.width, canvas.height)
-
-    // Set the index
-    var index = 0;
-    var offset = 0;
-
-    // Render the fields
-    for (var i=0+pixPerCell/2; i < canvas.width; i +=pixPerCell) {
-
-        for (var j=0+pixPerCell/2; j < canvas.height; j += pixPerCell) {
-            
-            let vec = getFieldVector(j, i)
-            let strength = vec.strength
-            var color = getColor(strength)
-            // var color = [255, 255, 255]
-            
-            // Old method
-            // ctx.fillStyle = ['rgb(',color[0],',',color[1],',',color[2],')'].join('')
-            // ctx.fillRect(i-pixPerCell/2, j-pixPerCell/2, pixPerCell, pixPerCell)
-            for (var k = 0; k < pixPerCell * pixPerCell; k++) {
-                offset = (k % pixPerCell) + ((k/pixPerCell) | 0)*canvas.width
-                offset *= 4
-                imgData.data[index + offset + 0] = color[0]
-                imgData.data[index + offset + 1] = color[1]
-                imgData.data[index + offset + 2] = color[2]
-                imgData.data[index + offset + 3] = 255
+            let strength = 0.0;
+            for (let l = 0; l < length; l++) {
+                const r = x - xArray[l];
+                const r2 = r * r + dySquaredArray[l];
+                strength += k * qArray[l] / Math.max(r2, smallestPassingDistanceSquared);
             }
-            index += 4*pixPerCell
-       }
-       index += 4 * (pixPerCell-1) * canvas.height
-    }
-    ctx.putImageData(imgData, 0,0)
 
-    // Draw each charge
-    for (charge of charges) {
-        ctx.fillStyle = 'white'
-        ctx.fillRect(charge.x, charge.y, 1, 1)
-    }
+            // Pixel color for the field strength.
+            // Uint8ClampedArray clamps values to 0-255. I.e. 1000 -> 255, -3.5 -> 0.
+            u8buffer[i + 0] = strength; // Red
+            u8buffer[i + 1] = Math.abs(strength / 15); // Green
+            u8buffer[i + 2] = -strength; // Blue
+            u8buffer[i + 3] = 255; // Alpha
 
-    // Draw each trail
-    ctx.beginPath()
-    for (charge of charges) {
-        ctx.moveTo(charge.trail[0].x, charge.trail[0].y)
-        for (pos of charge.trail) {
-            ctx.lineTo(pos['x'], pos['y'])
+            i += 4;
+            x += dx;
         }
+
+        y += dy;
     }
-    ctx.strokeStyle = 'white'
-    ctx.stroke();
-
-    // Draw FPS
-    // ctx.font = '60px sans-serif white'
-    // var delta = (performance.now() - lastTime)/1000
-    // lastTime = performance.now()
-    // var fps = 1/delta
-    // ctx.fillText('FPS: ' + Math.round(fps, 2), 230, 200)
-
-    
-
-
 }
 
+
+let wasmRenderScene = undefined;
+
+
+WebAssembly.instantiateStreaming(fetch('renderer.wasm'), {}).then(obj => {
+    const {renderScene, memory} = obj.instance.exports;
+
+    wasmRenderScene = (width, height, buffer, length, qArray, xArray, yArray) => {
+
+        const availableMemory = memory.buffer.byteLength;
+        const neededMemory = width * height * 4 + length * 4 * 4;
+        if (availableMemory < neededMemory) {
+            memory.grow(Math.ceil((neededMemory - availableMemory) / 65536));
+        }
+
+        let offset = 0
+
+        const copy = (src, dst) => {
+            if (dst == null) {
+                dst = new Float32Array(memory.buffer, offset, length);
+                offset += length * Float32Array.BYTES_PER_ELEMENT;
+            }
+            dst.set(src);
+            return dst;
+        };
+
+        const qArrayCopy = copy(qArray);
+        const xArrayCopy = copy(xArray);
+        const yArrayCopy = copy(yArray);
+        const dySquaredArray = copy(yArray);
+        const sceneBuffer = new Uint32Array(memory.buffer, offset, width * height);
+
+        renderScene(
+          width,
+          height,
+          sceneBuffer.byteOffset,
+          length,
+          qArrayCopy.byteOffset,
+          xArrayCopy.byteOffset,
+          yArrayCopy.byteOffset,
+          dySquaredArray.byteOffset,
+        );
+
+        new Uint32Array(buffer).set(sceneBuffer);
+    };
+
+    console.log('WASM render backend loaded');
+});
+
+
+onmessage = ({data}) => {
+    const { qArray, xArray, yArray, width, height, useWasm } = data;
+    const renderScene = (useWasm && wasmRenderScene) ? wasmRenderScene : jsRenderScene;
+
+    let buffer = data.buffer;
+    if (buffer == null || buffer.byteLength < width * height * 4) {
+        console.log(`Allocating new rendering buffer ${width}x${height}`);
+        buffer = data.buffer = new ArrayBuffer(width * height * 4);
+    }
+
+    const timestamp = performance.now();
+    renderScene(width, height, buffer, qArray.length, qArray, xArray, yArray);
+    data.renderDuration = performance.now() - timestamp;
+
+    postMessage(data, [buffer]);
+};
