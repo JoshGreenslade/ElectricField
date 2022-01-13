@@ -24,38 +24,48 @@
             <tbody>
             <tr>
                 <td class="label">Time scale:</td>
-                <td class="input"><input type="range" min="-2" max="1" step="0.01" value="0" id="time-scale-input"></td>
+                <td class="input"><input type="range" min="-2" max="1" step="0.01" id="time-scale-input"></td>
                 <td class="output"><output id=time-scale-output></output></td>
             </tr>
             <tr>
+                <td class="label">Adaptive time scaling:</td>
+                <td class="input"><input type="range" min="0" max="10000" step="1" id="adaptive-time-scale-input"></td>
+                <td class="output"><output id=adaptive-time-scale-output></output></td>
+            </tr>
+            <tr>
                 <td class="label">Integration method:</td>
-                <td class="input"><input type="range" min="0" max="3" step="1" value="0" id="integration-method-input"></td>
+                <td class="input"><input type="range" min="0" max="3" step="1" id="integration-method-input"></td>
                 <td class="output"><output id=integration-method-output></output></td>
             </tr>
             <tr>
                 <td class="label">Integration steps:</td>
-                <td class="input"><input type="range" min="1" max="1000" step="1" value="300" id="integration-steps-input"></td>
+                <td class="input"><input type="range" min="1" max="1000" step="1" id="integration-steps-input"></td>
                 <td class="output"><output id=integration-steps-output></output></td>
             </tr>
             <tr>
                 <td class="label">Friction of the medium:</td>
-                <td class="input"><input type="range" min="0" max="10" step="0.01" value="0" id="medium-friction-input"></td>
+                <td class="input"><input type="range" min="0" max="10" step="0.01" id="medium-friction-input"></td>
                 <td class="output"><output id=medium-friction-output></output></td>
             </tr>
             <tr>
                 <td class="label">Elasticity of walls:</td>
-                <td class="input"><input type="range" min="0" max="1" step="0.01" value="0.9" id="walls-elasticity-input"></td>
+                <td class="input"><input type="range" min="0" max="1" step="0.01" id="walls-elasticity-input"></td>
                 <td class="output"><output id=walls-elasticity-output></output></td>
             </tr>
             <tr>
                 <td class="label">Charge of new particles:</td>
-                <td class="input"><input type="range" min="-1000" max="1000" step="10" value="500" id="particle-charge-input"></td>
+                <td class="input"><input type="range" min="-1000" max="1000" step="10" id="particle-charge-input"></td>
                 <td class="output"><output id=particle-charge-output></output></td>
             </tr>
             <tr>
                 <td class="label">Mass of new particles:</td>
                 <td class="input"><input type="range" min="-1" max="1" step="0.01" value="0" id="particle-mass-input"></td>
                 <td class="output"><output id=particle-mass-output></output></td>
+            </tr>
+            <tr>
+                <td class="label">Grid layout:</td>
+                <td class="input"><input type="range" min="0" max="10" step="1" value="0" id="particle-grid-input"></td>
+                <td class="output"><output id=particle-grid-output></output></td>
             </tr>
             </tbody>
         </table>
@@ -67,6 +77,7 @@
                 <td class="load"><button type="button" id="load">Load</button></td>
                 <td class="step"><button type="button" id="step">Step</button></td>
                 <td class="pause"><button type="button" id="pause">Pause</button></td>
+                <td class="backward"><button type="button" id="backward">Backward</button></td>
                 <td class="reset"><button type="button" id="reset">Reset</button></td>
             </tr>
             </tbody>

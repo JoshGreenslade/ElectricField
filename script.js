@@ -165,21 +165,32 @@ class MultiThreadedRenderer {
 
 
 class Configuration {
+  integrationMethods = {
+    euler: 0,
+    midpoint: 1,
+    heun: 2,
+    rk4: 3,
+  };
+
   defaultTimeScale = 1;
+  defaultAdaptiveTimeScale = 3000;
   defaultMediumFriction = 0;
-  defaultIntegrationSteps = 300;
-  defaultIntegrationMethod = 'euler';
+  defaultIntegrationSteps = 1;
+  defaultIntegrationMethod = 'heun';
   defaultParticleMass = 1;
   defaultParticleCharge = 500;
+  defaultParticleGrid = 0;
   defaultWallsElasticity = 0.9;
 
   constructor() {
     this._timeScale = this.defaultTimeScale;
+    this._adaptiveTimeScale = this.defaultAdaptiveTimeScale;
     this._mediumFriction = this.defaultMediumFriction;
     this._integrationSteps = this.defaultIntegrationSteps;
     this._integrationMethod = this.defaultIntegrationMethod;
     this._particleMass = this.defaultParticleMass;
     this._particleCharge = this.defaultParticleCharge;
+    this._particleGrid = this.defaultParticleGrid;
     this._wallsElasticity = this.defaultWallsElasticity;
 
     this.controls = {};
@@ -260,6 +271,14 @@ class Configuration {
     this._timeScale = this.validate(value, 0.01, 10, this.defaultTimeScale, 2);
   }
 
+  get adaptiveTimeScale() {
+    return this._adaptiveTimeScale;
+  }
+
+  set adaptiveTimeScale(value) {
+    this._adaptiveTimeScale = this.validate(value, 0, 10000, this.defaultAdaptiveTimeScale, 0);
+  }
+
   get mediumFriction() {
     return this._mediumFriction;
   }
@@ -295,6 +314,14 @@ class Configuration {
     this._particleCharge = this.validate(value, -1000, 1000, this.defaultParticleCharge, 0);
   }
 
+  get particleGrid() {
+    return this._particleGrid;
+  }
+
+  set particleGrid(value) {
+    this._particleGrid = this.validate(value, 0, 20, this.defaultParticleGrid, 0);
+  }
+
   get integrationSteps() {
     return this._integrationSteps;
   }
@@ -308,7 +335,7 @@ class Configuration {
   }
 
   set integrationMethod(value) {
-    if (value !== 'euler' && value !== 'midpoint' && value !== 'heun' && value !== 'rk4') {
+    if (!value in this.integrationMethods) {
       value = this.defaultIntegrationMethod;
     }
     this._integrationMethod = value;
@@ -323,6 +350,7 @@ class Simulation {
     this.useWasm = !!useWasm;
     this.paused = false;
     this.step = false;
+    this.backward = false;
 
     this.baseSpeed = 0.01;
     this.particles = {
@@ -341,8 +369,10 @@ class Simulation {
 
   finishFrame = ({qArray, mArray, xArray, yArray, vxArray, vyArray, physicsDuration}) => {
     const {renderer} = this;
+    const {particleGrid} = this.configuration;
+    const grid = particleGrid > 0 ? (2.0 / particleGrid) : 0;
     this.particles = {qArray, mArray, xArray, yArray, vxArray, vyArray};
-    renderer.push({qArray, xArray, yArray, physicsDuration}).then(this.initFrame);
+    renderer.push({qArray, xArray, yArray, physicsDuration, grid}).then(this.initFrame);
   };
 
   initFrame = () => {
@@ -352,9 +382,11 @@ class Simulation {
     }
 
     const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
-    const {baseSpeed, useWasm} = this;
-    const {timeScale, integrationMethod, integrationSteps, mediumFriction, wallsElasticity} = this.configuration;
-    const dt = (!this.paused || this.step) ? (timeScale * baseSpeed / integrationSteps) : 0;
+    const {baseSpeed, useWasm, backward} = this;
+    const {
+      timeScale, adaptiveTimeScale, integrationMethod, integrationSteps, mediumFriction, wallsElasticity,
+    } = this.configuration;
+    const dt = (!this.paused || this.step) ? timeScale * baseSpeed : 0;
     this.step = false;
     this.physicsWorker.postMessage({
       qArray,
@@ -363,11 +395,11 @@ class Simulation {
       yArray,
       vxArray,
       vyArray,
-      // This introduces a rounding error accumulating over internal steps of simulation.
-      mediumFriction: mediumFriction > 0 ? Math.pow(1 - mediumFriction, 1 / integrationSteps) : 1,
+      mediumFriction,
       integrationMethod,
       integrationSteps,
-      dt,
+      dt: backward ? -dt : dt,
+      adaptiveTimeScale,
       wallsElasticity,
       useWasm,
     });
@@ -476,10 +508,16 @@ window.addEventListener('load', () => {
 
   // Function to get mouse pos
   function getMousePos(canvas, evt) {
+    const {particleGrid} = configuration;
     const rect = canvas.getBoundingClientRect();
     let x = 2.0 * (evt.x - rect.x) / (canvas.width - 1) - 1.0;
-    x = Math.max(-1.0, Math.min(1.0, x));
     let y = -2.0 * (evt.y - rect.y) / (canvas.height - 1) + 1.0;
+    if (particleGrid > 0) {
+      const grid = 2.0 / particleGrid;
+      x = Math.round(x / grid) * grid;
+      y = Math.round(y / grid) * grid;
+    }
+    x = Math.max(-1.0, Math.min(1.0, x));
     y = Math.max(-1.0, Math.min(1.0, y));
     return {x, y};
   }
@@ -500,16 +538,15 @@ window.addEventListener('load', () => {
   });
   configuration.bind({
     id: 'integration-method',
-    toValue: (input) => ({
-      1: 'midpoint',
-      2: 'heun',
-      3: 'rk4',
-    }[input] || 'euler'),
-    toInput: (integrationMethod) => ({
-      midpoint: 1,
-      heun: 2,
-      rk4: 3,
-    }[integrationMethod] || 0),
+    toValue: (input) => {
+      const foundMethod = Object.entries(configuration.integrationMethods).filter(([, i]) => i == input);
+      return foundMethod.length ? foundMethod[0][0] : configuration.defaultIntegrationMethod;
+    },
+    toInput: (integrationMethod) => (
+      integrationMethod in configuration.integrationMethods
+        ? configuration.integrationMethods[integrationMethod]
+        : configuration.integrationMethod[configuration.defaultIntegrationMethod]
+    ),
   });
   configuration.bind({
     id: 'time-scale',
@@ -518,8 +555,18 @@ window.addEventListener('load', () => {
     toOutput: (timeScale) => `x${timeScale}`,
   });
   configuration.bind({
+    id: 'adaptive-time-scale',
+    toOutput: (adaptiveTimeScale) => adaptiveTimeScale > 0 ? `1/${adaptiveTimeScale}` : 'off',
+  });
+  configuration.bind({
     id: 'particle-charge',
     toOutput: (particleCharge) => (particleCharge !== 0) ? `${particleCharge}` : '0 ??',
+  });
+  configuration.bind({
+    id: 'particle-grid',
+    toValue: (input) => parseFloat(input) * 2,
+    toOutput: (particleGrid) => particleGrid > 0 ? `${particleGrid}x${particleGrid}` : 'off',
+    toInput: (particleGrid) => particleGrid / 2,
   });
   configuration.bind({
     id: 'particle-mass',
@@ -558,6 +605,13 @@ window.addEventListener('load', () => {
     pauseButton.textContent = "Run";
   });
 
+  const backwardButton = document.getElementById("backward");
+  backwardButton.addEventListener('click', (e) => {
+    simulation.backward = !simulation.backward;
+    backwardButton.textContent = simulation.backward ? "Forward" : "Backward";
+  });
+  backwardButton.textContent = simulation.backward ? "Forward" : "Backward";
+
   const saveButton = document.getElementById("save");
   saveButton.addEventListener('click', (e) => {
     simulation.paused = true;
@@ -570,6 +624,10 @@ window.addEventListener('load', () => {
   });
 
   const fileInput = document.getElementById('file-input');
+  fileInput.addEventListener('click', (e) => {
+    // This is to make sure the change event is fired every time, even when the same file is selected.
+    fileInput.value = null;
+  });
   fileInput.addEventListener('change', (e) => {
     fileInput.files[0].text().then((text) => {
       const data = JSON.parse(text);

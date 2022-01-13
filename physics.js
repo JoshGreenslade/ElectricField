@@ -1,7 +1,7 @@
 
 
 const k = 0.00003;
-const smallestPassingDistanceSquared = 0.0003;
+const smallestPassingDistanceSquared = 0.00003;
 
 
 const prepareBuffers = (particleNumber, buffersNumber) => {
@@ -134,8 +134,6 @@ function euler(
   mediumFriction,
   wallsElasticity,
 ) {
-    console.log('euler method');
-
     let [
         fxArray, fyArray, nextXArray, nextYArray, nextVxArray, nextVyArray,
     ] = prepareBuffers(particleNumber, 6);
@@ -195,8 +193,6 @@ function midpoint(
   mediumFriction,
   wallsElasticity,
 ) {
-    console.log('midpoint method');
-
     let [
         fxArray, fyArray, nextXArray, nextYArray, nextVxArray, nextVyArray,
     ] = prepareBuffers(particleNumber, 6);
@@ -281,8 +277,6 @@ function heun(
   mediumFriction,
   wallsElasticity,
 ) {
-    console.log('heun method');
-
     let [
         aFxArray, aFyArray, bFxArray, bFyArray,
         nextXArray, nextYArray, nextVxArray, nextVyArray,
@@ -374,8 +368,6 @@ function rk4(
   mediumFriction,
   wallsElasticity,
 ) {
-    console.log('rk4 method');
-
     let [
         k1XArray, k1YArray, k1VxArray, k1VyArray, k1FxArray, k1FyArray,
         k2XArray, k2YArray, k2VxArray, k2VyArray, k2FxArray, k2FyArray,
@@ -545,6 +537,8 @@ function rk4(
 
             let vx = (k1Vx + k2Vx + k2Vx + k3Vx + k3Vx + k4Vx) / 6;
             let vy = (k1Vy + k2Vy + k2Vy + k3Vy + k3Vy + k4Vy) / 6;
+            // TODO what to do with the medium friction here? We already applied it to the kN velocities.
+            // So it is "baked in" the average anyway.
             let x = curXArray[i] + vx * dt;
             let y = curYArray[i] + vy * dt;
 
@@ -633,6 +627,69 @@ function loadWasmCallback(fileName, callbackName) {
 loadWasmCallback('physics.wasm', 'euler');
 
 
+function findMaxVelocity(particleNumber, vxArray, vyArray) {
+    if (particleNumber > 0) {
+        let maxVelocity = vxArray[0] * vxArray[0] + vyArray[0] * vyArray[0];
+        for (let i = 1; i < particleNumber; i++) {
+            maxVelocity = Math.max(maxVelocity, vxArray[i] * vxArray[i] + vyArray[i] * vyArray[i]);
+        }
+        return Math.sqrt(maxVelocity);
+    }
+
+    return 0.0;
+}
+
+
+function findDtScale(particleNumber, vxArray, vyArray, dt, maxDistance) {
+    const v = findMaxVelocity(particleNumber, vxArray, vyArray);
+    let distance = v * dt;
+    if (distance > maxDistance) {
+        // Particles are moving too fast. We need to chop the dt into N, even, smaller pieces.
+        // As a safety measure, N is capped to 100.
+        return Math.min(Math.ceil(Math.max(distance / maxDistance, 2.0)), 100);
+    }
+    return 1.0;
+}
+
+
+function adaptiveDt(
+  adaptiveTimeScale,
+  callback,
+  particleNumber,
+  mArray,
+  qArray,
+  xArray,
+  yArray,
+  vxArray,
+  vyArray,
+  integrationSteps,
+  dt,
+  mediumFriction,
+  wallsElasticity,
+) {
+    // adaptiveSize is relative to the scene size of 2.0
+    const maxDistance = 2.0 / adaptiveTimeScale;
+    const dtScale = findDtScale(particleNumber, vxArray, vyArray, dt, maxDistance);
+    const correctedSteps = integrationSteps * dtScale;
+    const correctedFriction = mediumFriction > 0 ? Math.pow(1 - mediumFriction, 1 / correctedSteps) : 1;
+    const correctedDt = dt / correctedSteps;
+
+    return callback(
+      particleNumber,
+      mArray,
+      qArray,
+      xArray,
+      yArray,
+      vxArray,
+      vyArray,
+      correctedSteps,
+      correctedDt,
+      correctedFriction,
+      wallsElasticity,
+    );
+}
+
+
 onmessage = ({data}) => {
     const {
         mArray,
@@ -644,15 +701,26 @@ onmessage = ({data}) => {
         integrationMethod,
         integrationSteps,
         dt,
+        adaptiveTimeScale,
         mediumFriction,
         wallsElasticity,
         useWasm,
     } = data;
-    const callbacks = useWasm ? wasmCallbacks : jsCallbacks;
-    const callback = callbacks[integrationMethod] || euler;
-
     const timestamp = performance.now();
-    if (dt > 0) {
+    if (dt !== 0) {
+        const callbacks = useWasm ? wasmCallbacks : jsCallbacks;
+        let callback = callbacks[integrationMethod] || euler;
+        let stepDt = dt;
+        let stepFriction = mediumFriction;
+
+        if (adaptiveTimeScale > 0) {
+            // Adaptive wrapper receives unchanged dt and friction and recalculates them as needed.
+            callback = adaptiveDt.bind(this, adaptiveTimeScale, callback);
+        } else {
+            stepDt = dt / integrationSteps;
+            stepFriction = mediumFriction > 0 ? Math.pow(1 - mediumFriction, 1 / integrationSteps) : 1;
+        }
+
         const [newMArray, newQArray, newXArray, newYArray, newVxArray, newVyArray] = callback(
           mArray.length,
           mArray,
@@ -662,10 +730,11 @@ onmessage = ({data}) => {
           vxArray,
           vyArray,
           integrationSteps,
-          dt,
-          mediumFriction,
+          stepDt,
+          stepFriction,
           wallsElasticity,
         );
+
         data.mArray = newMArray;
         data.qArray = newQArray;
         data.xArray = newXArray;
