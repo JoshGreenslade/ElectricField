@@ -1,46 +1,100 @@
-body {
-    margin: 0 0;
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
 }
 
 h1, h2, h3, h4 {
     text-align: center;
-    font-weight: bold;
 }
 
-.container {
+.page-container {
     margin: auto;
-    width: 50%;
-    text-align: left;
-    line-height: 1.6;
-    font-family: sans-serif;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    gap: 1em;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.main-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    justify-content: center;
+}
+
+.screen-container {
+    display: flex;
+    flex-direction: row;
+    gap: 1em;
+    justify-content: center;
+    align-items: center;
+}
+
+.buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    justify-content: center;
+}
+
+.tunables-container {
+    font-size: smaller;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 canvas {
-    margin: auto;
     display: block;
     background-color: black;
-    width: 300px;
-    height: 300px;
+    width: 250px;
+    height: 250px;
 }
 
-@media (min-width: 550px) {
+.stats-container {
+    position: fixed;
+    font-size: smaller;
+    bottom: 0.2em;
+    left: 0.5em;
+}
+
+@media (min-width: 600px) {
+    .page-container {
+        width: 95%;
+    }
     canvas {
-        width: 400px;
-        height: 400px;
+        width: 500px;
+        height: 500px;
     }
 }
 
-@media (min-width: 800px) {
+@media (min-width: 900px) {
+    .page-container {
+        width: 85%;
+    }
     canvas {
-        width: 600px;
-        height: 600px;
+        width: 750px;
+        height: 750px;
     }
 }
 
 @media (min-width: 1200px) {
-    canvas {
-        width: 800px;
-        height: 800px;
+    .page-container {
+        width: 100%;
+    }
+    .main-container {
+        flex-direction: row;
     }
 }
 
@@ -60,25 +114,24 @@ td.input input {
 
 td.output {
     text-align: left;
+    min-width: 4em;
 }
 
-button {
-    min-width: 7em;
+button, input[type=button] {
+    width: 7em;
+    min-height: 3em;
 }
 
-footer {
-    margin: 5rem auto auto;
-    width: 50%;
+input[type=range] {
+    min-width: 5em;
+    width: 100%;
+}
+
+header {
     text-align: center;
 }
 
-@media (max-width: 450px){
-
-    .container {
-        width: 300px;
-    }
-
-    .mobile {
-        display: inline-block
-    }
+footer {
+    font-size: x-small;
+    text-align: center;
 }

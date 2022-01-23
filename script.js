@@ -173,6 +173,7 @@ class Configuration {
   };
 
   defaultTimeScale = 1;
+  defaultReverseTime = false;
   defaultAdaptiveTimeScale = 3000;
   defaultMediumFriction = 0;
   defaultIntegrationSteps = 1;
@@ -185,6 +186,7 @@ class Configuration {
   constructor() {
     this._timeScale = this.defaultTimeScale;
     this._adaptiveTimeScale = this.defaultAdaptiveTimeScale;
+    this._reverseTime = this.defaultReverseTime;
     this._mediumFriction = this.defaultMediumFriction;
     this._integrationSteps = this.defaultIntegrationSteps;
     this._integrationMethod = this.defaultIntegrationMethod;
@@ -196,28 +198,41 @@ class Configuration {
     this.controls = {};
   }
 
-  bind = ({id, toValue, toOutput, toInput}) => {
+  idToName = (id) => {
+    // Convert HTML kebab-cases IDs to javascript camelCases
     const [first, ...rest] = id.split(/\W/);
-    const words = [first].concat(rest.map((s) => s.substring(0, 1).toUpperCase() + s.substring(1)));
+    const words = [first.toLocaleString()].concat(rest.map((s) => s.substring(0, 1).toUpperCase() + s.substring(1)));
     const name = `${words.join('')}`;
     if (!(name in this)) {
+      return undefined;
+    }
+    return name;
+  }
+
+  bind = ({id, toValue, toOutput, toInput}) => {
+    const name = this.idToName(id);
+    if (name == null) {
       return;
     }
 
     toValue = toValue || parseFloat;
-    toOutput = toOutput || ((value) => value);
-    toInput = toInput || ((value) => value);
+    toOutput = toOutput || ((newValue) => newValue);
+    toInput = toInput || ((newValue) => newValue);
 
     const input = document.getElementById(`${id}-input`);
     const output = document.getElementById(`${id}-output`);
 
     const setter = (inputValue) => {
-      this[name] = toValue(inputValue);
-      input.value = toInput(this[name]);
-      output.value = toOutput(this[name]);
+      const oldValue = this[name];
+      this[name] = toValue(inputValue, oldValue);
+      const newValue = this[name];
+      input.value = toInput(newValue, oldValue);
+      if (output != null) {
+        output.value = toOutput(newValue, oldValue);
+      }
     };
 
-    input.addEventListener('input', (e) => {
+    input.addEventListener(input.type === "button" ? "click" : "input", (e) => {
       setter(e.target.value);
       e.preventDefault();
     });
@@ -269,6 +284,14 @@ class Configuration {
 
   set timeScale(value) {
     this._timeScale = this.validate(value, 0.01, 10, this.defaultTimeScale, 2);
+  }
+
+  get reverseTime() {
+    return this._reverseTime;
+  }
+
+  set reverseTime(value) {
+    this._reverseTime = !!value;
   }
 
   get adaptiveTimeScale() {
@@ -382,9 +405,9 @@ class Simulation {
     }
 
     const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
-    const {baseSpeed, useWasm, backward} = this;
+    const {baseSpeed, useWasm} = this;
     const {
-      timeScale, adaptiveTimeScale, integrationMethod, integrationSteps, mediumFriction, wallsElasticity,
+      timeScale, reverseTime, adaptiveTimeScale, integrationMethod, integrationSteps, mediumFriction, wallsElasticity,
     } = this.configuration;
     const dt = (!this.paused || this.step) ? timeScale * baseSpeed : 0;
     this.step = false;
@@ -398,7 +421,7 @@ class Simulation {
       mediumFriction,
       integrationMethod,
       integrationSteps,
-      dt: backward ? -dt : dt,
+      dt: reverseTime ? -dt : dt,
       adaptiveTimeScale,
       wallsElasticity,
       useWasm,
@@ -584,6 +607,11 @@ window.addEventListener('load', () => {
   configuration.bind({
     id: 'walls-elasticity',
   });
+  configuration.bind({
+    id: 'reverse-time',
+    toValue: (newValue, oldValue) => newValue == null ? oldValue : !oldValue,
+    toInput: (reverseTime) => reverseTime ? "Forward" : "Backward",
+  });
 
   const resetButton = document.getElementById("reset");
   resetButton.addEventListener('click', (e) => {
@@ -604,13 +632,6 @@ window.addEventListener('load', () => {
     simulation.step = true;
     pauseButton.textContent = "Run";
   });
-
-  const backwardButton = document.getElementById("backward");
-  backwardButton.addEventListener('click', (e) => {
-    simulation.backward = !simulation.backward;
-    backwardButton.textContent = simulation.backward ? "Forward" : "Backward";
-  });
-  backwardButton.textContent = simulation.backward ? "Forward" : "Backward";
 
   const saveButton = document.getElementById("save");
   saveButton.addEventListener('click', (e) => {

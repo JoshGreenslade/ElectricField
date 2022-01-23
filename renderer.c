@@ -122,8 +122,4 @@ extern void renderScene(const int width, const int height, const int length, con
 
         y -= dy;
     }
-
-    qArray[0] = 1.23f;
-    xArray[0] = 2.34f;
-    yArray[0] = 3.45f;
 }
