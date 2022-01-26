@@ -1,5 +1,3 @@
-
-
 const k = 0.00003;
 const smallestPassingDistanceSquared = 0.00003;
 
@@ -9,7 +7,7 @@ const prepareBuffers = (particleNumber, buffersNumber) => {
     const buffer = new ArrayBuffer(buffersNumber * arraySize);
     const buffers = [];
     let offset = 0;
-    for(let i = 0; i < buffersNumber; i++) {
+    for (let i = 0; i < buffersNumber; i++) {
         buffers.push(new Float32Array(buffer, offset, particleNumber));
         offset += arraySize;
     }
@@ -29,12 +27,12 @@ const bounce = (position, velocity, elasticity) => {
 
 
 const findForces = (
-  particleNumber,
-  qArray,
-  xArray,
-  yArray,
-  fxArray,
-  fyArray,
+    particleNumber,
+    qArray,
+    xArray,
+    yArray,
+    fxArray,
+    fyArray,
 ) => {
     for (let i = 0; i < particleNumber; i++) {
         const x = xArray[i];
@@ -69,22 +67,22 @@ const findForces = (
 // 3. Something else? I.e. apply to the intermediate steps and the final step as well?
 // Currently we do a mix of the options, depending on the method.
 const applyForces = (
-  particleNumber,
-  mArray,
-  qArray,
-  xArray,
-  yArray,
-  vxArray,
-  vyArray,
-  fxArray,
-  fyArray,
-  newXArray,
-  newYArray,
-  newVxArray,
-  newVyArray,
-  dt,
-  mediumFriction,
-  wallsElasticity,
+    particleNumber,
+    mArray,
+    qArray,
+    xArray,
+    yArray,
+    vxArray,
+    vyArray,
+    fxArray,
+    fyArray,
+    newXArray,
+    newYArray,
+    newVxArray,
+    newVyArray,
+    dt,
+    mediumFriction,
+    wallsElasticity,
 ) => {
     mediumFriction = (mediumFriction == null) ? 1.0 : mediumFriction;
 
@@ -122,17 +120,17 @@ const applyForces = (
 
 
 function euler(
-  particleNumber,
-  mArray,
-  qArray,
-  curXArray,
-  curYArray,
-  curVxArray,
-  curVyArray,
-  integrationSteps,
-  dt,
-  mediumFriction,
-  wallsElasticity,
+    particleNumber,
+    mArray,
+    qArray,
+    curXArray,
+    curYArray,
+    curVxArray,
+    curVyArray,
+    integrationSteps,
+    dt,
+    mediumFriction,
+    wallsElasticity,
 ) {
     let [
         fxArray, fyArray, nextXArray, nextYArray, nextVxArray, nextVyArray,
@@ -141,31 +139,31 @@ function euler(
     // This implementation is some 20-30% slower than manually unrolled code.
     for (let i = 0; i < integrationSteps; i++) {
         findForces(
-          particleNumber,
-          qArray,
-          curXArray,
-          curYArray,
-          fxArray,
-          fyArray,
+            particleNumber,
+            qArray,
+            curXArray,
+            curYArray,
+            fxArray,
+            fyArray,
         );
 
         applyForces(
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          fxArray,
-          fyArray,
-          nextXArray,
-          nextYArray,
-          nextVxArray,
-          nextVyArray,
-          dt,
-          mediumFriction,
-          wallsElasticity,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            fxArray,
+            fyArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
+            dt,
+            mediumFriction,
+            wallsElasticity,
         );
 
         [nextXArray, curXArray] = [curXArray, nextXArray];
@@ -181,17 +179,17 @@ function euler(
 // https://en.wikipedia.org/wiki/Midpoint_method
 // This is explicit midpoint
 function midpoint(
-  particleNumber,
-  mArray,
-  qArray,
-  curXArray,
-  curYArray,
-  curVxArray,
-  curVyArray,
-  integrationSteps,
-  dt,
-  mediumFriction,
-  wallsElasticity,
+    particleNumber,
+    mArray,
+    qArray,
+    curXArray,
+    curYArray,
+    curVxArray,
+    curVyArray,
+    integrationSteps,
+    dt,
+    mediumFriction,
+    wallsElasticity,
 ) {
     let [
         fxArray, fyArray, nextXArray, nextYArray, nextVxArray, nextVyArray,
@@ -199,58 +197,58 @@ function midpoint(
 
     for (let i = 0; i < integrationSteps; i++) {
         findForces(
-          particleNumber,
-          qArray,
-          curXArray,
-          curYArray,
-          fxArray,
-          fyArray,
+            particleNumber,
+            qArray,
+            curXArray,
+            curYArray,
+            fxArray,
+            fyArray,
         );
 
         applyForces( // Find a state half way thru for dt/2
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          fxArray,
-          fyArray,
-          nextXArray,
-          nextYArray,
-          nextVxArray,
-          nextVyArray,
-          dt/2,
-          mediumFriction,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            fxArray,
+            fyArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
+            dt / 2,
+            mediumFriction,
         );
 
         findForces( // Find the forces for that point
-          particleNumber,
-          qArray,
-          nextXArray,
-          nextYArray,
-          fxArray,
-          fyArray,
+            particleNumber,
+            qArray,
+            nextXArray,
+            nextYArray,
+            fxArray,
+            fyArray,
         );
 
         applyForces( // Re-apply the forces from the midpoint to initial state
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          fxArray,
-          fyArray,
-          nextXArray,
-          nextYArray,
-          nextVxArray,
-          nextVyArray,
-          dt,
-          mediumFriction,
-          wallsElasticity,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            fxArray,
+            fyArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
+            dt,
+            mediumFriction,
+            wallsElasticity,
         );
 
         [nextXArray, curXArray] = [curXArray, nextXArray];
@@ -265,17 +263,17 @@ function midpoint(
 
 // https://en.wikipedia.org/wiki/Heun%27s_method
 function heun(
-  particleNumber,
-  mArray,
-  qArray,
-  curXArray,
-  curYArray,
-  curVxArray,
-  curVyArray,
-  integrationSteps,
-  dt,
-  mediumFriction,
-  wallsElasticity,
+    particleNumber,
+    mArray,
+    qArray,
+    curXArray,
+    curYArray,
+    curVxArray,
+    curVyArray,
+    integrationSteps,
+    dt,
+    mediumFriction,
+    wallsElasticity,
 ) {
     let [
         aFxArray, aFyArray, bFxArray, bFyArray,
@@ -284,64 +282,64 @@ function heun(
 
     for (let i = 0; i < integrationSteps; i++) {
         findForces( // Find forces in the initial state.
-          particleNumber,
-          qArray,
-          curXArray,
-          curYArray,
-          aFxArray,
-          aFyArray,
+            particleNumber,
+            qArray,
+            curXArray,
+            curYArray,
+            aFxArray,
+            aFyArray,
         );
 
         applyForces( // Iterate to the final state, just like in Euler method.
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          aFxArray,
-          aFyArray,
-          nextXArray,
-          nextYArray,
-          nextVxArray,
-          nextVyArray,
-          dt,
-          mediumFriction,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            aFxArray,
+            aFyArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
+            dt,
+            mediumFriction,
         );
 
         findForces( // Find forces for the final state.
-          particleNumber,
-          qArray,
-          nextXArray,
-          nextYArray,
-          bFxArray,
-          bFyArray,
+            particleNumber,
+            qArray,
+            nextXArray,
+            nextYArray,
+            bFxArray,
+            bFyArray,
         );
 
         // Add the forces and apply them over dt/2 to the initial state.
-        for(let i = 0; i < particleNumber; i++) {
+        for (let i = 0; i < particleNumber; i++) {
             aFxArray[i] += bFxArray[i];
             aFyArray[i] += bFyArray[i];
         }
 
         applyForces(
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          aFxArray,
-          aFyArray,
-          nextXArray,
-          nextYArray,
-          nextVxArray,
-          nextVyArray,
-          dt/2,
-          mediumFriction,
-          wallsElasticity,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            aFxArray,
+            aFyArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
+            dt / 2,
+            mediumFriction,
+            wallsElasticity,
         );
 
         [nextXArray, curXArray] = [curXArray, nextXArray];
@@ -356,17 +354,17 @@ function heun(
 
 // https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods
 function rk4(
-  particleNumber,
-  mArray,
-  qArray,
-  curXArray,
-  curYArray,
-  curVxArray,
-  curVyArray,
-  integrationSteps,
-  dt,
-  mediumFriction,
-  wallsElasticity,
+    particleNumber,
+    mArray,
+    qArray,
+    curXArray,
+    curYArray,
+    curVxArray,
+    curVyArray,
+    integrationSteps,
+    dt,
+    mediumFriction,
+    wallsElasticity,
 ) {
     let [
         k1XArray, k1YArray, k1VxArray, k1VyArray, k1FxArray, k1FyArray,
@@ -378,154 +376,154 @@ function rk4(
 
     for (let i = 0; i < integrationSteps; i++) {
         findForces( // Find forces needed to get k1 derivative based on yn
-          particleNumber,
-          qArray,
-          curXArray,
-          curYArray,
-          k1FxArray,
-          k1FyArray,
+            particleNumber,
+            qArray,
+            curXArray,
+            curYArray,
+            k1FxArray,
+            k1FyArray,
         );
 
         applyForces( // Find yn + dt / 2 * k1
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          k1FxArray,
-          k1FyArray,
-          k1XArray,
-          k1YArray,
-          k1VxArray,
-          k1VyArray,
-          dt/2,
-          mediumFriction,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            k1FxArray,
+            k1FyArray,
+            k1XArray,
+            k1YArray,
+            k1VxArray,
+            k1VyArray,
+            dt / 2,
+            mediumFriction,
         );
 
         findForces( // Find forces needed to get k2 derivative based on yn + dt / 2 * k1
-          particleNumber,
-          qArray,
-          k1XArray,
-          k1YArray,
-          k2FxArray,
-          k2FyArray,
+            particleNumber,
+            qArray,
+            k1XArray,
+            k1YArray,
+            k2FxArray,
+            k2FyArray,
         );
 
         applyForces( // Find yn + dt / 2 * k2
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          k2FxArray,
-          k2FyArray,
-          k2XArray,
-          k2YArray,
-          k2VxArray,
-          k2VyArray,
-          dt/2,
-          mediumFriction,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            k2FxArray,
+            k2FyArray,
+            k2XArray,
+            k2YArray,
+            k2VxArray,
+            k2VyArray,
+            dt / 2,
+            mediumFriction,
         );
 
         findForces( // Find forces needed to get k3 derivative based on yn + dt / 2 * k2
-          particleNumber,
-          qArray,
-          k2XArray,
-          k2YArray,
-          k3FxArray,
-          k3FyArray,
+            particleNumber,
+            qArray,
+            k2XArray,
+            k2YArray,
+            k3FxArray,
+            k3FyArray,
         );
 
         applyForces( // Find yn + dt * k3
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          k3FxArray,
-          k3FyArray,
-          k3XArray,
-          k3YArray,
-          k3VxArray,
-          k3VyArray,
-          dt,
-          mediumFriction,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            k3FxArray,
+            k3FyArray,
+            k3XArray,
+            k3YArray,
+            k3VxArray,
+            k3VyArray,
+            dt,
+            mediumFriction,
         );
 
         findForces( // Find forces needed to get k4 derivative based on yn + dt * k3
-          particleNumber,
-          qArray,
-          k3XArray,
-          k3YArray,
-          k4FxArray,
-          k4FyArray,
+            particleNumber,
+            qArray,
+            k3XArray,
+            k3YArray,
+            k4FxArray,
+            k4FyArray,
         );
 
         applyForces( // Find dt * k4
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          k4FxArray,
-          k4FyArray,
-          k4XArray,
-          k4YArray,
-          k4VxArray,
-          k4VyArray,
-          dt,
-          mediumFriction,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            k4FxArray,
+            k4FyArray,
+            k4XArray,
+            k4YArray,
+            k4VxArray,
+            k4VyArray,
+            dt,
+            mediumFriction,
         );
 
         // Re-apply forces in order to find yn + dt * k1,
         // we cannot reuse the dt/2 because of how we apply friction.
         applyForces(
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          k1FxArray,
-          k1FyArray,
-          k1XArray,
-          k1YArray,
-          k1VxArray,
-          k1VyArray,
-          dt,
-          mediumFriction,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            k1FxArray,
+            k1FyArray,
+            k1XArray,
+            k1YArray,
+            k1VxArray,
+            k1VyArray,
+            dt,
+            mediumFriction,
         );
 
         // Same for k2. Re-apply the forces for dt.
         applyForces(
-          particleNumber,
-          mArray,
-          qArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          k2FxArray,
-          k2FyArray,
-          k2XArray,
-          k2YArray,
-          k2VxArray,
-          k2VyArray,
-          dt,
-          mediumFriction,
+            particleNumber,
+            mArray,
+            qArray,
+            curXArray,
+            curYArray,
+            curVxArray,
+            curVyArray,
+            k2FxArray,
+            k2FyArray,
+            k2XArray,
+            k2YArray,
+            k2VxArray,
+            k2VyArray,
+            dt,
+            mediumFriction,
         );
 
         // Find the weighted average of the velocities and apply it to the initial positions.
-        for(let i = 0; i < particleNumber; i++) {
+        for (let i = 0; i < particleNumber; i++) {
             const k1Vx = k1VxArray[i];
             const k1Vy = k1VyArray[i];
             const k2Vx = k2VxArray[i];
@@ -561,66 +559,69 @@ function rk4(
 }
 
 
-const jsCallbacks = {euler, midpoint, heun ,rk4};
+const jsCallbacks = {euler, midpoint, heun, rk4};
 
 
 const wasmCallbacks = {euler, midpoint, heun, rk4};
 
 
 function loadWasmCallback(fileName, callbackName) {
-    WebAssembly.instantiateStreaming(fetch(fileName), {}).then(obj => {
-        const memory = obj.instance.exports.memory;
-        const callback = obj.instance.exports[callbackName];
+    fetch(fileName)
+        .then((resp) => resp.arrayBuffer())
+        .then((bytes) => WebAssembly.instantiate(bytes))
+        .then((obj) => {
+            const memory = obj.instance.exports.memory;
+            const callback = obj.instance.exports[callbackName];
 
-        wasmCallbacks[callbackName] = (
-          particleNumber,
-          curMArray,
-          curQArray,
-          curXArray,
-          curYArray,
-          curVxArray,
-          curVyArray,
-          integrationSteps,
-          dt,
-          mediumFriction,
-          wallsElasticity,
-        ) => {
-            // 6 x cur arrays + 4 next array
-            const buffer = new Float32Array(memory.buffer, 0, 10 * particleNumber);
+            wasmCallbacks[callbackName] = (
+                particleNumber,
+                curMArray,
+                curQArray,
+                curXArray,
+                curYArray,
+                curVxArray,
+                curVyArray,
+                integrationSteps,
+                dt,
+                mediumFriction,
+                wallsElasticity,
+            ) => {
+                // 6 x cur arrays + 4 next array
+                const buffer = new Float32Array(memory.buffer, 0, 10 * particleNumber);
 
-            let startOffset = 0;
-            buffer.set(curMArray, startOffset);
-            startOffset += particleNumber;
-            buffer.set(curQArray, startOffset);
-            startOffset += particleNumber;
-            buffer.set(curXArray, startOffset);
-            startOffset += particleNumber;
-            buffer.set(curYArray, startOffset);
-            startOffset += particleNumber;
-            buffer.set(curVxArray, startOffset);
-            startOffset += particleNumber;
-            buffer.set(curVyArray, startOffset);
+                let startOffset = 0;
+                buffer.set(curMArray, startOffset);
+                startOffset += particleNumber;
+                buffer.set(curQArray, startOffset);
+                startOffset += particleNumber;
+                buffer.set(curXArray, startOffset);
+                startOffset += particleNumber;
+                buffer.set(curYArray, startOffset);
+                startOffset += particleNumber;
+                buffer.set(curVxArray, startOffset);
+                startOffset += particleNumber;
+                buffer.set(curVyArray, startOffset);
 
-            callback(particleNumber, buffer.byteOffset, integrationSteps, dt, mediumFriction, wallsElasticity);
+                callback(particleNumber, buffer.byteOffset, integrationSteps, dt, mediumFriction, wallsElasticity);
 
-            startOffset += particleNumber;
-            let endOffset = startOffset + particleNumber;
-            curXArray.set(buffer.subarray(startOffset, endOffset));
-            startOffset += particleNumber;
-            endOffset += particleNumber;
-            curYArray.set(buffer.subarray(startOffset, endOffset));
-            startOffset += particleNumber;
-            endOffset += particleNumber;
-            curVxArray.set(buffer.subarray(startOffset, endOffset));
-            startOffset += particleNumber;
-            endOffset += particleNumber;
-            curVyArray.set(buffer.subarray(startOffset, endOffset));
+                startOffset += particleNumber;
+                let endOffset = startOffset + particleNumber;
+                curXArray.set(buffer.subarray(startOffset, endOffset));
+                startOffset += particleNumber;
+                endOffset += particleNumber;
+                curYArray.set(buffer.subarray(startOffset, endOffset));
+                startOffset += particleNumber;
+                endOffset += particleNumber;
+                curVxArray.set(buffer.subarray(startOffset, endOffset));
+                startOffset += particleNumber;
+                endOffset += particleNumber;
+                curVyArray.set(buffer.subarray(startOffset, endOffset));
 
-            return [curMArray, curQArray, curXArray, curYArray, curVxArray, curVyArray];
-        };
+                return [curMArray, curQArray, curXArray, curYArray, curVxArray, curVyArray];
+            };
 
-        console.log(`WASM ${callbackName} physics loaded`);
-    });
+            console.log(`WASM ${callbackName} physics loaded`);
+        });
 }
 
 
@@ -652,46 +653,9 @@ function findDtScale(particleNumber, vxArray, vyArray, dt, maxDistance) {
 }
 
 
-function adaptiveDt(
-  adaptiveTimeScale,
-  callback,
-  particleNumber,
-  mArray,
-  qArray,
-  xArray,
-  yArray,
-  vxArray,
-  vyArray,
-  integrationSteps,
-  dt,
-  mediumFriction,
-  wallsElasticity,
-) {
-    // adaptiveSize is relative to the scene size of 2.0
-    const maxDistance = 2.0 / adaptiveTimeScale;
-    const dtScale = findDtScale(particleNumber, vxArray, vyArray, dt, maxDistance);
-    const correctedSteps = integrationSteps * dtScale;
-    const correctedFriction = mediumFriction > 0 ? Math.pow(1 - mediumFriction, 1 / correctedSteps) : 1;
-    const correctedDt = dt / correctedSteps;
-
-    return callback(
-      particleNumber,
-      mArray,
-      qArray,
-      xArray,
-      yArray,
-      vxArray,
-      vyArray,
-      correctedSteps,
-      correctedDt,
-      correctedFriction,
-      wallsElasticity,
-    );
-}
-
-
 onmessage = ({data}) => {
     const {
+        dt,
         mArray,
         qArray,
         xArray,
@@ -699,40 +663,36 @@ onmessage = ({data}) => {
         vxArray,
         vyArray,
         integrationMethod,
-        integrationSteps,
-        dt,
         adaptiveTimeScale,
         mediumFriction,
         wallsElasticity,
         useWasm,
     } = data;
+    let {integrationSteps} = data;
     const timestamp = performance.now();
     if (dt !== 0) {
+        const particleNumber = mArray.length;
         const callbacks = useWasm ? wasmCallbacks : jsCallbacks;
         let callback = callbacks[integrationMethod] || euler;
-        let stepDt = dt;
-        let stepFriction = mediumFriction;
 
         if (adaptiveTimeScale > 0) {
-            // Adaptive wrapper receives unchanged dt and friction and recalculates them as needed.
-            callback = adaptiveDt.bind(this, adaptiveTimeScale, callback);
-        } else {
-            stepDt = dt / integrationSteps;
-            stepFriction = mediumFriction > 0 ? Math.pow(1 - mediumFriction, 1 / integrationSteps) : 1;
+            const maxDistance = 2.0 / adaptiveTimeScale;
+            const dtScale = findDtScale(particleNumber, vxArray, vyArray, dt, maxDistance);
+            integrationSteps *= dtScale;
         }
 
         const [newMArray, newQArray, newXArray, newYArray, newVxArray, newVyArray] = callback(
-          mArray.length,
-          mArray,
-          qArray,
-          xArray,
-          yArray,
-          vxArray,
-          vyArray,
-          integrationSteps,
-          stepDt,
-          stepFriction,
-          wallsElasticity,
+            particleNumber,
+            mArray,
+            qArray,
+            xArray,
+            yArray,
+            vxArray,
+            vyArray,
+            integrationSteps,
+            dt / integrationSteps,
+            mediumFriction > 0 ? Math.pow(1 - mediumFriction, 1 / integrationSteps) : 1,
+            wallsElasticity,
         );
 
         data.mArray = newMArray;

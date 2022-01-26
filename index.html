@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <script async src="script.js"></script>
+    <link rel="stylesheet" href="index.css">
+    <script async type="module" src="index.js"></script>
     <title>ElectricField</title>
 </head>
 <body>
@@ -85,7 +85,11 @@
     </footer>
 </div>
 
-<div id="stats" class="stats-container">Stats will go here...</div>
+<div class="stats-container">
+    <table class="stats-table"></table>
+    <input class="stats-close" id="show-stats-input" type="button" value="✕"/>
+</div>
+
 <a id="file-download" hidden/>
 <input id="file-input" type="file" accept=".json,application/json" style="display: none;"/>
 </body>

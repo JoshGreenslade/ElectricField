@@ -1,5 +1,3 @@
-
-
 const k = 0.001;
 const smallestPassingDistanceSquared = 0.000003;
 
@@ -80,49 +78,54 @@ function jsRenderScene(width, height, buffer, length, qArray, xArray, yArray, gr
 let wasmRenderScene = undefined;
 
 
-WebAssembly.instantiateStreaming(fetch('renderer.wasm'), {}).then(obj => {
-    const {renderScene, memory} = obj.instance.exports;
+// WebAssembly.instantiateStreaming expects the server to return WASM file with application/wasm MIME.
+// If that doesn't happen, it fails. See: https://github.com/mdn/webassembly-examples/issues/5
+fetch('renderer.wasm')
+    .then((resp) => resp.arrayBuffer())
+    .then((bytes) => WebAssembly.instantiate(bytes))
+    .then((obj) => {
+        const {renderScene, memory} = obj.instance.exports;
 
-    wasmRenderScene = (width, height, buffer, length, qArray, xArray, yArray, grid) => {
+        wasmRenderScene = (width, height, buffer, length, qArray, xArray, yArray, grid) => {
 
-        const availableMemory = memory.buffer.byteLength;
-        const neededMemory = (
-          width * height * Uint32Array.BYTES_PER_ELEMENT
-          + length * Float32Array.BYTES_PER_ELEMENT * 4
-          + width + height
-        );
-        if (availableMemory < neededMemory) {
-            memory.grow(Math.ceil((neededMemory - availableMemory) / 65536));
-        }
-
-        let offset = 0
-
-        const copy = (src, dst) => {
-            if (dst == null) {
-                dst = new Float32Array(memory.buffer, offset, length);
-                offset += length * Float32Array.BYTES_PER_ELEMENT;
+            const availableMemory = memory.buffer.byteLength;
+            const neededMemory = (
+                width * height * Uint32Array.BYTES_PER_ELEMENT
+                + length * Float32Array.BYTES_PER_ELEMENT * 4
+                + width + height
+            );
+            if (availableMemory < neededMemory) {
+                memory.grow(Math.ceil((neededMemory - availableMemory) / 65536));
             }
-            dst.set(src);
-            return dst;
+
+            let offset = 0
+
+            const copy = (src, dst) => {
+                if (dst == null) {
+                    dst = new Float32Array(memory.buffer, offset, length);
+                    offset += length * Float32Array.BYTES_PER_ELEMENT;
+                }
+                dst.set(src);
+                return dst;
+            };
+
+            const sceneBuffer = new Uint32Array(memory.buffer, offset, width * height);
+            offset += width * height * Uint32Array.BYTES_PER_ELEMENT;
+            copy(qArray);
+            copy(xArray);
+            copy(yArray);
+
+            renderScene(width, height, length, grid, buffer);
+
+            new Uint32Array(buffer).set(sceneBuffer);
         };
 
-        const sceneBuffer = new Uint32Array(memory.buffer, offset, width * height);
-        offset += width * height * Uint32Array.BYTES_PER_ELEMENT;
-        copy(qArray);
-        copy(xArray);
-        copy(yArray);
-
-        renderScene(width, height, length, grid, buffer);
-
-        new Uint32Array(buffer).set(sceneBuffer);
-    };
-
-    console.log('WASM render backend loaded');
-});
+        console.log('WASM render backend loaded');
+    });
 
 
 onmessage = ({data}) => {
-    const { qArray, xArray, yArray, width, height, useWasm, grid } = data;
+    const {qArray, xArray, yArray, width, height, useWasm, grid} = data;
     const renderScene = (useWasm && wasmRenderScene) ? wasmRenderScene : jsRenderScene;
 
     let buffer = data.buffer;
