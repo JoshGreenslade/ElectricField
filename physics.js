@@ -15,17 +15,6 @@ const prepareBuffers = (particleNumber, buffersNumber) => {
 };
 
 
-const bounce = (position, velocity, elasticity) => {
-    if (position >= 1.0) {
-        return [2.0 - position, velocity * -elasticity];
-    }
-    if (position <= -1.0) {
-        return [-2.0 - position, velocity * -elasticity];
-    }
-    return [position, velocity];
-};
-
-
 const findForces = (
     particleNumber,
     qArray,
@@ -82,7 +71,6 @@ const applyForces = (
     newVyArray,
     dt,
     mediumFriction,
-    wallsElasticity,
 ) => {
     mediumFriction = (mediumFriction == null) ? 1.0 : mediumFriction;
 
@@ -104,17 +92,49 @@ const applyForces = (
             vy *= mediumFriction;
             x += vx * dt;
             y += vy * dt;
-
-            if (wallsElasticity != null) {
-                [x, vx] = bounce(x, vx, wallsElasticity);
-                [y, vy] = bounce(y, vy, wallsElasticity);
-            }
         }
 
         newXArray[i] = x;
         newYArray[i] = y;
         newVxArray[i] = vx;
         newVyArray[i] = vy;
+    }
+};
+
+
+const bounceOffWalls = (
+    particleNumber,
+    mArray,
+    xArray,
+    yArray,
+    vxArray,
+    vyArray,
+    wallsElasticity,
+) => {
+    wallsElasticity = -wallsElasticity;
+
+    for (let i = 0; i < particleNumber; i++) {
+        const m = mArray[i];
+
+        if (m !== Infinity) {
+            const x = xArray[i];
+            if (x >= 1.0) {
+                xArray[i] = 2.0 - x;
+                vxArray[i] *= wallsElasticity;
+            } else if (x <= -1.0) {
+                xArray[i] = -2.0 - x;
+                vxArray[i] *= wallsElasticity;
+            }
+
+            const y = yArray[i];
+            if (y >= 1.0) {
+                yArray[i] = 2.0 - y;
+                vyArray[i] *= wallsElasticity;
+            } else if (y <= -1.0) {
+                yArray[i] = -2.0 - y;
+                vyArray[i] *= wallsElasticity;
+            }
+        }
     }
 };
 
@@ -163,6 +183,15 @@ function euler(
             nextVyArray,
             dt,
             mediumFriction,
+        );
+
+        bounceOffWalls(
+            particleNumber,
+            mArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
             wallsElasticity,
         );
 
@@ -248,6 +277,15 @@ function midpoint(
             nextVyArray,
             dt,
             mediumFriction,
+        );
+
+        bounceOffWalls(
+            particleNumber,
+            mArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
             wallsElasticity,
         );
 
@@ -339,6 +377,15 @@ function heun(
             nextVyArray,
             dt / 2,
             mediumFriction,
+        );
+
+        bounceOffWalls(
+            particleNumber,
+            mArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
             wallsElasticity,
         );
 
@@ -540,14 +587,21 @@ function rk4(
             let x = curXArray[i] + vx * dt;
             let y = curYArray[i] + vy * dt;
 
-            [x, vx] = bounce(x, vx, wallsElasticity);
-            [y, vy] = bounce(y, vy, wallsElasticity);
-
             nextXArray[i] = x;
             nextYArray[i] = y;
             nextVxArray[i] = vx;
             nextVyArray[i] = vy;
         }
+
+        bounceOffWalls(
+            particleNumber,
+            mArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
+            wallsElasticity,
+        );
 
         [nextXArray, curXArray] = [curXArray, nextXArray];
         [nextYArray, curYArray] = [curYArray, nextYArray];
@@ -559,10 +613,109 @@ function rk4(
 }
 
 
-const jsCallbacks = {euler, midpoint, heun, rk4};
+// https://en.wikipedia.org/wiki/Verlet_integration
+function verlet(
+  particleNumber,
+  mArray,
+  qArray,
+  curXArray,
+  curYArray,
+  curVxArray,
+  curVyArray,
+  integrationSteps,
+  dt,
+  mediumFriction,
+  wallsElasticity,
+) {
+    let [
+        fxArray, fyArray, nextXArray, nextYArray, nextVxArray, nextVyArray,
+    ] = prepareBuffers(particleNumber, 8);
+
+    for (let i = 0; i < integrationSteps; i++) {
+        findForces( // Find forces in the initial state.
+          particleNumber,
+          qArray,
+          curXArray,
+          curYArray,
+          fxArray,
+          fyArray,
+        );
+
+        applyForces( // Find half step velocities.
+          particleNumber,
+          mArray,
+          qArray,
+          curXArray,
+          curYArray,
+          curVxArray,
+          curVyArray,
+          fxArray,
+          fyArray,
+          nextXArray,
+          nextYArray,
+          nextVxArray,
+          nextVyArray,
+          dt/2,
+          mediumFriction,
+        );
+
+        // Find x(t+dt) using the half step velocities.
+        for (let j = 0; j < particleNumber; j++) {
+            nextXArray[j] = curXArray[j] + nextVxArray[j] * dt;
+            nextYArray[j] = curYArray[j] + nextVyArray[j] * dt;
+        }
+
+        findForces( // Find forces for the final positions.
+          particleNumber,
+          qArray,
+          nextXArray,
+          nextYArray,
+          fxArray,
+          fyArray,
+        );
+
+        applyForces( // Find v(t+dt), positions from this step are ignored
+          particleNumber,
+          mArray,
+          qArray,
+          nextXArray,
+          nextYArray,
+          nextVxArray,
+          nextVyArray,
+          fxArray,
+          fyArray,
+          curXArray,
+          curYArray,
+          nextVxArray,
+          nextVyArray,
+          dt/2,
+          mediumFriction,
+        );
+
+        bounceOffWalls(
+            particleNumber,
+            mArray,
+            nextXArray,
+            nextYArray,
+            nextVxArray,
+            nextVyArray,
+            wallsElasticity,
+        );
+
+        [nextXArray, curXArray] = [curXArray, nextXArray];
+        [nextYArray, curYArray] = [curYArray, nextYArray];
+        [nextVxArray, curVxArray] = [curVxArray, nextVxArray];
+        [nextVyArray, curVyArray] = [curVyArray, nextVyArray];
+    }
+
+    return [mArray, qArray, curXArray, curYArray, curVxArray, curVyArray];
+}
 
 
-const wasmCallbacks = {euler, midpoint, heun, rk4};
+const jsCallbacks = {euler, midpoint, heun, rk4, verlet};
+
+
+const wasmCallbacks = {euler, midpoint, heun, rk4, verlet};
 
 
 function loadWasmCallback(fileName, callbackName) {

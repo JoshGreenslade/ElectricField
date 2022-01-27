@@ -7,6 +7,7 @@ export class Configuration {
         midpoint: 1,
         heun: 2,
         rk4: 3,
+        verlet: 4,
     };
 
     defaultTimeScale = 1;
