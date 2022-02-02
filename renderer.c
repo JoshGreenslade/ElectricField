@@ -13,7 +13,7 @@
 extern float rintf(float);
 
 
-#define k 0.001f
+#define k 10000.0f
 #define smallestPassingDistanceSquared 0.000003f
 
 

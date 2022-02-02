@@ -29,7 +29,6 @@ export class Stats {
 
         const stats = this.reset({calc, format, limit, name, cssName, variableName, precision, unit});
         this._stats.push(stats);
-        this._stats.sort((a, b) => a.name.localeCompare(b.name));
 
         const set = (x) => {
             stats.count++;

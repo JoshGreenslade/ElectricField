@@ -4,9 +4,10 @@ export class SimulationDispatcher {
         this.configuration = configuration;
         this.renderer = renderer;
         this.useWasm = !!useWasm;
-        this.paused = false;
+        this.paused = true;
         this.step = false;
 
+        this.baseCharge = 0.00001;
         this.baseSpeed = 0.01;
         this.particles = {
             qArray: new Float32Array(0),
@@ -22,12 +23,25 @@ export class SimulationDispatcher {
         this.physicsWorker.addEventListener('message', (e) => this.finishFrame(e.data));
     }
 
-    finishFrame = ({qArray, mArray, xArray, yArray, vxArray, vyArray, physicsDuration, dt}) => {
+    finishFrame = ({
+                       qArray,
+                       mArray,
+                       xArray,
+                       yArray,
+                       vxArray,
+                       vyArray,
+                       physicsDuration,
+                       dt,
+                       potentialEnergy,
+                       kineticEnergy,
+                   }) => {
         const {renderer} = this;
         const {particleGrid} = this.configuration;
         const grid = particleGrid > 0 ? (2.0 / particleGrid) : 0;
         this.particles = {qArray, mArray, xArray, yArray, vxArray, vyArray};
-        renderer.push({qArray, xArray, yArray, grid, physicsDuration, dt}).then(this.initFrame);
+        renderer.push({
+            qArray, xArray, yArray, grid, physicsDuration, dt, potentialEnergy, kineticEnergy,
+        }).then(this.initFrame);
     };
 
     initFrame = () => {
@@ -120,6 +134,8 @@ export class SimulationDispatcher {
 
     addParticle = (x, y, charge, mass) => {
         this.update = () => {
+            charge *= this.baseCharge;
+            console.log(`Adding particle x=${x} y=${y} m=${mass} q=${charge}`)
             const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
             this.particles = {
                 qArray: Float32Array.of(...qArray, charge),

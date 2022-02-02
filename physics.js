@@ -1,4 +1,4 @@
-const k = 0.00003;
+const ke = 8.987551e9
 const smallestPassingDistanceSquared = 0.00003;
 
 
@@ -85,7 +85,7 @@ const applyForces = (
         let fy = fyArray[i];
 
         if (m !== Infinity) {
-            const tmp = k * dt * q / m;
+            const tmp = ke * dt * q / m;
             vx += fx * tmp;
             vy += fy * tmp;
             vx *= mediumFriction;
@@ -781,6 +781,59 @@ function loadWasmCallback(fileName, callbackName) {
 loadWasmCallback('physics.wasm', 'euler');
 
 
+function findPotentialEnergy(
+    particleNumber,
+    qArray,
+    xArray,
+    yArray,
+) {
+    let e = 0;
+
+    for (let i = 0; i < particleNumber; i++) {
+        const x = xArray[i];
+        const y = yArray[i];
+
+        let tmp = 0.0;
+
+        for (let j = 0; j < particleNumber; j++) {
+            if (j !== i) {
+                const dx = x - xArray[j];
+                const dy = y - yArray[j];
+                const dx2 = dx * dx;
+                const dy2 = dy * dy;
+                const r2 = Math.max(dx2 + dy2, smallestPassingDistanceSquared);
+                tmp += qArray[j] / Math.sqrt(r2);
+            }
+        }
+
+        e += tmp * qArray[i];
+    }
+
+    return ke * e / 2.0;
+}
+
+
+function findKineticEnergy(
+    particleNumber,
+    mArray,
+    vxArray,
+    vyArray,
+) {
+    let e = 0;
+
+    for (let i = 0; i < particleNumber; i++) {
+        let m = mArray[i];
+        if (m !== Infinity) {
+            const vx = vxArray[i];
+            const vy = vyArray[i];
+            e += m * (vx * vx + vy * vy);
+        }
+    }
+
+    return e / 2.0;
+}
+
+
 function findMaxVelocity(particleNumber, vxArray, vyArray) {
     if (particleNumber > 0) {
         let maxVelocity = vxArray[0] * vxArray[0] + vyArray[0] * vyArray[0];
@@ -822,9 +875,10 @@ onmessage = ({data}) => {
         useWasm,
     } = data;
     let {integrationSteps} = data;
+    const particleNumber = mArray.length;
+
     const timestamp = performance.now();
     if (dt !== 0) {
-        const particleNumber = mArray.length;
         const callbacks = useWasm ? wasmCallbacks : jsCallbacks;
         let callback = callbacks[integrationMethod] || euler;
 
@@ -855,6 +909,10 @@ onmessage = ({data}) => {
         data.vxArray = newVxArray;
         data.vyArray = newVyArray;
     }
+
+    data.potentialEnergy = findPotentialEnergy(particleNumber, data.qArray, data.xArray, data.yArray);
+    data.kineticEnergy = findKineticEnergy(particleNumber, data.mArray, data.vxArray, data.vyArray);
+
     data.physicsDuration = performance.now() - timestamp;
 
     postMessage(data);

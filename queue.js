@@ -21,18 +21,6 @@ export class ThreadedRenderQueue {
             },
         });
         stats.init({
-            name: 'render load',
-            unit: '%',
-        });
-        stats.init({
-            name: 'render time',
-            unit: 'ms',
-        });
-        stats.init({
-            name: 'render threads',
-            precision: 0,
-        });
-        stats.init({
             name: 'time',
             calc: ({sum}) => sum,
             precision: 4,
@@ -45,8 +33,38 @@ export class ThreadedRenderQueue {
             limit: 1,
         });
         stats.init({
+            name: 'render load',
+            unit: '%',
+        });
+        stats.init({
+            name: 'render threads',
+            precision: 0,
+        });
+        stats.init({
+            name: 'render time',
+            unit: 'ms',
+        });
+        stats.init({
             name: 'physics time',
             unit: 'ms',
+        });
+        stats.init({
+            name: 'potential energy',
+            calc: ({last}) => last,
+            precision: 3,
+            limit: 1,
+        });
+        stats.init({
+            name: 'kinetic energy',
+            calc: ({last}) => last,
+            precision: 3,
+            limit: 1,
+        });
+        stats.init({
+            name: 'total energy',
+            calc: ({last}) => last,
+            precision: 3,
+            limit: 1,
         });
         stats.particles = 0;
 
@@ -94,7 +112,9 @@ export class ThreadedRenderQueue {
         });
     };
 
-    render = (timestamp, {qArray, buffer, width, height, renderDuration, physicsDuration, dt}) => {
+    render = (timestamp, {
+        qArray, buffer, width, height, renderDuration, physicsDuration, dt, potentialEnergy, kineticEnergy,
+    }) => {
         this.nextPullId++;
         const {canvas, stats} = this;
 
@@ -107,6 +127,9 @@ export class ThreadedRenderQueue {
         stats.physicsTime = physicsDuration;
         stats.time = dt;
         stats.particles = qArray.length;
+        stats.potentialEnergy = potentialEnergy;
+        stats.kineticEnergy = kineticEnergy;
+        stats.totalEnergy = potentialEnergy + kineticEnergy;
         this.lastTimestamp = timestamp;
 
         if (canvas.width === width && canvas.height === height) {

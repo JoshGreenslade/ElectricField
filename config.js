@@ -15,11 +15,11 @@ export class Configuration {
     defaultAdaptiveTimeScale = 3000;
     defaultMediumFriction = 0;
     defaultIntegrationSteps = 1;
-    defaultIntegrationMethod = 'heun';
+    defaultIntegrationMethod = 'verlet';
     defaultParticleMass = 1;
-    defaultParticleCharge = 500;
+    defaultParticleCharge = 1;
     defaultParticleGrid = 0;
-    defaultWallsElasticity = 0.9;
+    defaultWallsElasticity = 1;
     defaultShowStats = false;
 
     constructor() {
@@ -44,31 +44,25 @@ export class Configuration {
             return undefined;
         }
 
-        toValue = toValue || parseFloat;
-        toOutput = toOutput || ((newValue) => newValue);
-        toInput = toInput || ((newValue) => newValue);
+        toValue = toValue || ((elem) => parseFloat(elem.value));
+        toOutput = toOutput || ((elem, value) => elem.value = value);
+        toInput = toInput || ((elem, value) => elem.value = value);
 
         const input = document.getElementById(`${id}-input`);
         const output = document.getElementById(`${id}-output`);
 
-        const setter = (inputValue) => {
-            const oldValue = this[name];
-            this[name] = toValue(inputValue, oldValue);
-            const newValue = this[name];
-            const newInputValue = toInput(newValue, oldValue)
-            if (newInputValue != null) {
-                input.value = newInputValue;
-            }
+        const setter = (value) => {
+            this[name] = value;
+            value = this[name];
+            toInput(input, value);
             if (output != null) {
-                const newOutputValue = toOutput(newValue, oldValue);
-                if (newOutputValue != null) {
-                    output.value = newOutputValue;
-                }
+                toOutput(output, value);
             }
         };
 
-        input.addEventListener(input.type === "button" ? "click" : "input", (e) => {
-            setter(e.target.value);
+        const eventType = (input instanceof HTMLInputElement && input.type !== 'button') ? 'input' : 'click';
+        input.addEventListener(eventType, (e) => {
+            setter(toValue(e.target));
             e.preventDefault();
         });
 
@@ -85,8 +79,7 @@ export class Configuration {
         const {controls} = this;
         Object.keys(parameters).forEach((name) => {
             if (name in controls) {
-                const {setter, toValue, toOutput, toInput} = controls[name];
-                setter(toInput(parameters[name]));
+                controls[name].setter(parameters[name]);
             }
         });
     };
@@ -169,7 +162,7 @@ export class Configuration {
     }
 
     set particleCharge(value) {
-        this._particleCharge = this.validate(value, -1000, 1000, this.defaultParticleCharge, 0);
+        this._particleCharge = this.validate(value, -10, 10, this.defaultParticleCharge, 1);
     }
 
     get particleGrid() {
@@ -193,7 +186,7 @@ export class Configuration {
     }
 
     set integrationMethod(value) {
-        if (!value in this.integrationMethods) {
+        if (value == null || (!value in this.integrationMethods)) {
             value = this.defaultIntegrationMethod;
         }
         this._integrationMethod = value;

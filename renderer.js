@@ -1,4 +1,4 @@
-const k = 0.001;
+const k = 10000;
 const smallestPassingDistanceSquared = 0.000003;
 
 

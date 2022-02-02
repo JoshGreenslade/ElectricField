@@ -67,62 +67,74 @@ window.addEventListener('load', () => {
   });
   configuration.bind({
     id: 'integration-method',
-    toValue: (input) => {
-      const foundMethod = Object.entries(configuration.integrationMethods).filter(([, i]) => i == input);
-      return foundMethod.length ? foundMethod[0][0] : configuration.defaultIntegrationMethod;
+    toValue: (elem) => {
+      const input = parseFloat(elem.value);
+      const found = Object.entries(configuration.integrationMethods).filter(([, i]) => i === input);
+      return found.length ? found[0][0] : configuration.defaultIntegrationMethod;
     },
-    toInput: (integrationMethod) => (
-      integrationMethod in configuration.integrationMethods
-        ? configuration.integrationMethods[integrationMethod]
-        : configuration.integrationMethod[configuration.defaultIntegrationMethod]
-    ),
+    toInput: (elem, method) => {
+      method = (method in configuration.integrationMethods)
+          ? configuration.integrationMethods[method]
+          : configuration.integrationMethods[configuration.defaultIntegrationMethod];
+      elem.value = method;
+    },
   });
   configuration.bind({
     id: 'time-scale',
-    toValue: (input) => Math.pow(10, parseFloat(input)),
-    toInput: (timeScale) => Math.log10(timeScale),
-    toOutput: (timeScale) => `x${timeScale}`,
+    toValue: (elem) => Math.pow(10, parseFloat(elem.value)),
+    toInput: (elem, timeScale) => elem.value = Math.log10(timeScale),
+    toOutput: (elem, timeScale) => elem.value = `x${timeScale}`,
   });
   configuration.bind({
     id: 'adaptive-time-scale',
-    toOutput: (adaptiveTimeScale) => adaptiveTimeScale > 0 ? `1/${adaptiveTimeScale}` : 'off',
+    toOutput: (elem, adaptiveTimeScale) => elem.value = (adaptiveTimeScale > 0 ? `1/${adaptiveTimeScale}` : 'off'),
   });
   configuration.bind({
     id: 'particle-charge',
-    toOutput: (particleCharge) => (particleCharge !== 0) ? `${particleCharge}` : '0 ??',
+    toOutput: (elem, particleCharge) => elem.value = (particleCharge !== 0 ? particleCharge : 'invalid'),
   });
   configuration.bind({
     id: 'particle-grid',
-    toValue: (input) => parseFloat(input) * 2,
-    toOutput: (particleGrid) => particleGrid > 0 ? `${particleGrid}x${particleGrid}` : 'off',
-    toInput: (particleGrid) => particleGrid / 2,
+    toValue: (elem) => parseFloat(elem.value) * 2,
+    toOutput: (elem, particleGrid) => elem.value = (particleGrid > 0 ? `${particleGrid}x${particleGrid}` : 'off'),
+    toInput: (elem, particleGrid) => elem.value = particleGrid / 2,
   });
   configuration.bind({
     id: 'particle-mass',
-    toValue: (input) => {
-      const particleMass = Math.pow(10, parseFloat(input));
+    toValue: (elem) => {
+      const particleMass = Math.pow(10, parseFloat(elem.value));
       return particleMass >= 10 ? Infinity : particleMass;
     },
-    toInput: (particleMass) => (particleMass === Infinity) ? 10 : Math.log10(particleMass),
+    toInput: (elem, particleMass) => elem.value = (particleMass === Infinity ? 10 : Math.log10(particleMass)),
   });
   configuration.bind({
     id: 'medium-friction',
-    toValue: (input) => (Math.pow(2, parseFloat(input)) - 1) / 1023,
-    toInput: (mediumFriction) => Math.log2(mediumFriction * 1023 + 1),
+    toValue: (elem) => (Math.pow(2, parseFloat(elem.value)) - 1) / 1023,
+    toInput: (elem, mediumFriction) => elem.value = Math.log2(mediumFriction * 1023 + 1),
   });
   configuration.bind({
     id: 'walls-elasticity',
   });
   configuration.bind({
     id: 'reverse-time',
-    toValue: (newValue, oldValue) => newValue == null ? oldValue : !oldValue,
-    toInput: (reverseTime) => reverseTime ? "Forward" : "Backward",
+    toValue: (elem) => {
+      const reverseTime = elem.reverseTime;
+      return (reverseTime === true || reverseTime === false) ? reverseTime : !configuration.defaultReverseTime;
+    },
+    toInput: (elem, reverseTime) => {
+      elem.value = reverseTime ? "Forward" : "Backward";
+      elem.reverseTime = !reverseTime;
+    },
   });
   const statsContainer = document.querySelector(".stats-container");
   configuration.bind({
     id: 'show-stats',
-    toValue: (newValue, oldValue) => newValue == null ? oldValue : !oldValue,
-    toInput: (showStats) => {
+    toValue: (elem) => {
+      const showStats = elem.showStats;
+      return (showStats === true || showStats === false) ? showStats : !configuration.defaultShowStats;
+    },
+    toInput: (elem, showStats) => {
+      elem.showStats = !showStats;
       if (showStats) {
         statsContainer.classList.remove("hidden");
       } else {
