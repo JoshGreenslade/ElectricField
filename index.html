@@ -4,85 +4,98 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <script type="text/javascript">
-        var scr = document.createElement('script');
-        scr.type = 'text/javascript';
-        if(navigator.userAgent.indexOf("Firefox") != -1 )
-          scr.src = "firefoxfix.js"
-        else 
-          scr.src = "script.js"
-        document.head.appendChild(scr);
-      </script>
-    <title>Document</title>
+    <link rel="stylesheet" href="index.css">
+    <script async type="module" src="index.js"></script>
+    <title>ElectricField</title>
 </head>
 <body>
-    <div class="container">
+<div class="page-container">
+    <h1>Electric Field Simulator</h1>
 
-        <h1>Electric Field Simulator</h1>
+    <header>
+        Left click to create a positive charge.
+        Right click to create a negative charge.
+        Click Run / Pause.
+    </header>
 
-        <h3>How to use</h3>
-        <p>Left click to create a positive charge. Right click to create a negative charge (If on mobile use the options)</p>
-        <p>Use the options at the bottom to change the physics timescale, image resolution, # of physics subsamples, friction, charge, trails, and static charges.</p>
-        <p>(Note, this will run on firefox, but is optimized for chrome and is a lot more performant, especially with resolution)</p>
-        
-        <div>
-            <canvas> </canvas>
-        </div>
-    
-        <!-- Controls -->
-        <div class="hidden">
-            <label for="positive" style="display: inline">Positive:</label>
-            <input type="checkbox" id="positive" checked>
-       </div>
-       
-        <div>
-            <label for="timescale">Timescale:</label>
-            <input type="range" min="-2" max="1" step="0.01" id="timescale" oninput="document.getElementById('timescale_output').value = Math.pow(10,this.value).toFixed(2)">
-            <output id=timescale_output>1</output>
-        </div>
-    
-        <div>
-            <label for="Resolution">Resolution:</label>
-            <input type="range" min="1" max="20" step="1" value="10" id="resolution" oninput="document.getElementById('resolution_output').value = this.value">
-            <output id=resolution_output>10</output>
+    <div class="main-container">
+        <div class="screen-container">
+            <div class="buttons-container">
+                <button type="button" id="pause">Pause</button>
+                <button type="button" id="step">Step</button>
+                <button type="button" id="save">Save</button>
+                <button type="button" id="load">Load</button>
+                <button type="button" id="reset">Reset</button>
+                <input type="button" id="reverse-time-input"/>
+            </div>
+            <canvas></canvas>
         </div>
 
-        <div>
-            <label for="physicssubsamples">Subsamples:</label>
-            <input type="range" min="100" max="10000" step="100" value="5000" id="physicssubsamples" oninput="document.getElementById('physicssubsamples_output').value = this.value">
-            <output id=physicssubsamples_output>5000</output>
-        </div>
-    
-        <div>
-            <label for="friction">Friction:</label>
-            <input type="range" min="0" max="0.2" step="0.001" value="0" id="friction" oninput="document.getElementById('friction_output').value = this.value">
-            <output id=friction_output>0</output>
-        </div>
-    
-        <div>
-            <label for="charge">Charge:</label>
-            <input type="range" min="100" max="1600" step="50" value="800" id="charge" oninput="document.getElementById('charge_output').value = this.value">
-            <output id=charge_output>800</output>
-        </div>
-    
-        <div>
-            <label for="trail">Trails:</label>
-            <input type="checkbox" id="trail" checked>
-       </div>
-    
-        <div>
-            <label for="static">Static:</label>
-            <input type="checkbox" id="static">
-        </div>
-        
-        <div>
-            <button type="button" id="reset" onclick="charges = [];">Reset</button>
+        <div class="tunables-container">
+            <table>
+                <tbody>
+                <tr>
+                    <td class="label">Time scale:</td>
+                    <td class="input"><input type="range" min="-2" max="1" step="0.01" id="time-scale-input"></td>
+                    <td class="output"><output id=time-scale-output></output></td>
+                </tr>
+                <tr>
+                    <td class="label">Adaptive time scaling:</td>
+                    <td class="input"><input type="range" min="0" max="10000" step="1" id="adaptive-time-scale-input"></td>
+                    <td class="output"><output id=adaptive-time-scale-output></output></td>
+                </tr>
+                <tr>
+                    <td class="label">Integration method:</td>
+                    <td class="input"><input type="range" min="0" max="4" step="1" id="integration-method-input"></td>
+                    <td class="output"><output id=integration-method-output></output></td>
+                </tr>
+                <tr>
+                    <td class="label">Integration steps:</td>
+                    <td class="input"><input type="range" min="1" max="1000" step="1" id="integration-steps-input"></td>
+                    <td class="output"><output id=integration-steps-output></output></td>
+                </tr>
+                <tr>
+                    <td class="label">Friction of the medium:</td>
+                    <td class="input"><input type="range" min="0" max="10" step="0.01" id="medium-friction-input"></td>
+                    <td class="output"><output id=medium-friction-output></output></td>
+                </tr>
+                <tr>
+                    <td class="label">Elasticity of walls:</td>
+                    <td class="input"><input type="range" min="0" max="1" step="0.01" id="walls-elasticity-input"></td>
+                    <td class="output"><output id=walls-elasticity-output></output></td>
+                </tr>
+                <tr>
+                    <td class="label">Charge of new particles:</td>
+                    <td class="input"><input type="range" min="-10" max="10" step=".1" id="particle-charge-input"></td>
+                    <td class="output"><output id=particle-charge-output></output></td>
+                </tr>
+                <tr>
+                    <td class="label">Mass of new particles:</td>
+                    <td class="input"><input type="range" min="-1" max="1" step="0.01" value="0" id="particle-mass-input"></td>
+                    <td class="output"><output id=particle-mass-output></output></td>
+                </tr>
+                <tr>
+                    <td class="label">Grid layout:</td>
+                    <td class="input"><input type="range" min="0" max="10" step="1" value="0" id="particle-grid-input"></td>
+                    <td class="output"><output id=particle-grid-output></output></td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </div>
+
+    <footer>
+        <a href="https://github.com/JoshGreenslade/ElectricField/">Look at the code here</a>
+    </footer>
+</div>
+
+<div class="stats-container">
+    <table class="stats-table"></table>
+    <input class="stats-close" id="show-stats-input" type="button" value="✕"/>
+</div>
+
+<a id="file-download" hidden/>
+<input id="file-input" type="file" accept=".json,application/json" style="display: none;"/>
 </body>
-<footer>
-    <a href="https://github.com/JoshGreenslade/ElectricField/">Look at the code here</a>
-</footer>
 
 </html>
