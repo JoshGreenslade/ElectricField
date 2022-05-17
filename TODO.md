@@ -1,6 +1,4 @@
 
-- Calculate total energy and track
-
 - Find common "stable" and "unstable" self-organised areas
 
 - Do sth with the O(N^2) complexity in both physics engine and rendering. An example could be a form
