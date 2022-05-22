@@ -134,8 +134,8 @@ export class SimulationDispatcher {
 
     addParticle = (x, y, charge, mass) => {
         this.update = () => {
+            console.log(`Adding particle x=${x} y=${y} m=${mass} q=${charge}`);
             charge *= this.baseCharge;
-            console.log(`Adding particle x=${x} y=${y} m=${mass} q=${charge}`)
             const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
             this.particles = {
                 qArray: Float32Array.of(...qArray, charge),

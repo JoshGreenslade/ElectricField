@@ -68,16 +68,19 @@ canvas {
     font-size: smaller;
     bottom: 0.2em;
     left: 0.5em;
+    background: #e0e0e0;
+    min-width: 15em;
+    display: flex;
+    flex-direction: column;
 }
 
 .stats-table .name {
-    font-size: smaller;
     text-align: right;
     padding-right: 0.5em;
 }
 
 .stats-table .value {
-    font-size: smaller;
+    width: 5em;
     text-align: left;
 }
 
@@ -86,11 +89,8 @@ canvas {
 }
 
 input[type=button].stats-close {
-    font-size: large;
-    text-align: center;
     width: 100%;
-    min-height: unset;
-    min-width: 7em;
+    min-height: 1.5em;
 }
 
 @media (min-width: 600px) {
@@ -143,8 +143,9 @@ td.output {
 
 button, input[type=button] {
     width: 7em;
-    min-height: 3em;
+    min-height: 2.5em;
     cursor: pointer;
+    background: #e0e0e0;
 }
 
 input[type=range] {

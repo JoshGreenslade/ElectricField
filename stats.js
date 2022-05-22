@@ -8,14 +8,14 @@ export class Stats {
         this._timeout = undefined;
     }
 
-    reset = (stats, value) => {
+    resetStats = (stats, value) => {
         stats.count = stats.sum = 0;
         stats.last = stats.max = stats.min = undefined;
         stats.value = value;
         return stats;
     };
 
-    resetAll = () => this._stats.forEach((stats) => this.reset(stats));
+    reset = () => this._stats.forEach((stats) => this.resetStats(stats));
 
     init = ({name, calc, limit = 30, format, precision = 1, unit}) => {
         calc = calc || ((stats) => {
@@ -27,7 +27,7 @@ export class Stats {
 
         const {cssName, variableName} = toNames(name);
 
-        const stats = this.reset({calc, format, limit, name, cssName, variableName, precision, unit});
+        const stats = this.resetStats({calc, format, limit, name, cssName, variableName, precision, unit});
         this._stats.push(stats);
 
         const set = (x) => {
