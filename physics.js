@@ -712,73 +712,7 @@ function verlet(
 }
 
 
-const jsCallbacks = {euler, midpoint, heun, rk4, verlet};
-
-
-const wasmCallbacks = {euler, midpoint, heun, rk4, verlet};
-
-
-function loadWasmCallback(fileName, callbackName) {
-    fetch(fileName)
-        .then((resp) => resp.arrayBuffer())
-        .then((bytes) => WebAssembly.instantiate(bytes))
-        .then((obj) => {
-            const memory = obj.instance.exports.memory;
-            const callback = obj.instance.exports[callbackName];
-
-            wasmCallbacks[callbackName] = (
-                particleNumber,
-                curMArray,
-                curQArray,
-                curXArray,
-                curYArray,
-                curVxArray,
-                curVyArray,
-                integrationSteps,
-                dt,
-                mediumFriction,
-                wallsElasticity,
-            ) => {
-                // 6 x cur arrays + 4 next array
-                const buffer = new Float32Array(memory.buffer, 0, 10 * particleNumber);
-
-                let startOffset = 0;
-                buffer.set(curMArray, startOffset);
-                startOffset += particleNumber;
-                buffer.set(curQArray, startOffset);
-                startOffset += particleNumber;
-                buffer.set(curXArray, startOffset);
-                startOffset += particleNumber;
-                buffer.set(curYArray, startOffset);
-                startOffset += particleNumber;
-                buffer.set(curVxArray, startOffset);
-                startOffset += particleNumber;
-                buffer.set(curVyArray, startOffset);
-
-                callback(particleNumber, buffer.byteOffset, integrationSteps, dt, mediumFriction, wallsElasticity);
-
-                startOffset += particleNumber;
-                let endOffset = startOffset + particleNumber;
-                curXArray.set(buffer.subarray(startOffset, endOffset));
-                startOffset += particleNumber;
-                endOffset += particleNumber;
-                curYArray.set(buffer.subarray(startOffset, endOffset));
-                startOffset += particleNumber;
-                endOffset += particleNumber;
-                curVxArray.set(buffer.subarray(startOffset, endOffset));
-                startOffset += particleNumber;
-                endOffset += particleNumber;
-                curVyArray.set(buffer.subarray(startOffset, endOffset));
-
-                return [curMArray, curQArray, curXArray, curYArray, curVxArray, curVyArray];
-            };
-
-            console.log(`WASM ${callbackName} physics loaded`);
-        });
-}
-
-
-loadWasmCallback('physics.wasm', 'euler');
+const callbacks = {euler, midpoint, heun, rk4, verlet};
 
 
 function findPotentialEnergy(
@@ -872,14 +806,12 @@ onmessage = ({data}) => {
         adaptiveTimeScale,
         mediumFriction,
         wallsElasticity,
-        useWasm,
     } = data;
     let {integrationSteps} = data;
     const particleNumber = mArray.length;
 
     const timestamp = performance.now();
     if (dt !== 0) {
-        const callbacks = useWasm ? wasmCallbacks : jsCallbacks;
         let callback = callbacks[integrationMethod] || euler;
 
         if (adaptiveTimeScale > 0) {

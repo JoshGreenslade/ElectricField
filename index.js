@@ -33,7 +33,6 @@ window.addEventListener('load', () => {
   const simulation = new SimulationDispatcher({
     configuration,
     renderer,
-    useWasm: false,
   });
 
   function getMousePosition(canvas, e) {
