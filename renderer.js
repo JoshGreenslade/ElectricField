@@ -129,7 +129,7 @@ onmessage = ({data}) => {
     const renderScene = (useWasm && wasmRenderScene) ? wasmRenderScene : jsRenderScene;
 
     let buffer = data.buffer;
-    if (buffer == null || buffer.byteLength < width * height * Uint32Array.BYTES_PER_ELEMENT) {
+    if (buffer == null || buffer.byteLength != width * height * Uint32Array.BYTES_PER_ELEMENT) {
         console.log(`Allocating new rendering buffer ${width}x${height}`);
         buffer = data.buffer = new ArrayBuffer(width * height * Uint32Array.BYTES_PER_ELEMENT);
     }

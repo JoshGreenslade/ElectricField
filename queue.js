@@ -6,6 +6,9 @@ export class ThreadedRenderQueue {
         this.size = Math.min(Math.max((navigator.hardwareConcurrency || 4) - 2, 1), maxThreads);
         this.useWasm = !!useWasm;
         this.canvas = canvas;
+        // canvas.clientWidth and canvas.clientHeight props are controlled in CSS that is responsive.
+        // canvas.width and canvas.height must be kept in sync with canvas.clientWidth and canvas.clientHeight
+        // as user resizes the page window.
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
         this.context = canvas.getContext('2d');
@@ -121,6 +124,7 @@ export class ThreadedRenderQueue {
     }) => {
         this.nextPullId++;
         const {canvas, stats} = this;
+        const {width: canvasWidth, height: canvasHeight, clientWidth, clientHeight} = canvas;
 
         if (this.lastTimestamp != null) {
             stats.fps = timestamp - this.lastTimestamp;
@@ -136,10 +140,15 @@ export class ThreadedRenderQueue {
         stats.totalEnergy = potentialEnergy + kineticEnergy;
         this.lastTimestamp = timestamp;
 
-        if (canvas.width === width && canvas.height === height) {
+        if (width === canvasWidth && height === canvasHeight) {
             const u8buffer = new Uint8ClampedArray(buffer);
             const imageData = new ImageData(u8buffer, width, height);
             this.context.putImageData(imageData, 0, 0);
+        }
+
+        if (canvasWidth !== clientWidth || canvasHeight !== clientHeight) {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
         }
 
         this.buffers.push(buffer);
