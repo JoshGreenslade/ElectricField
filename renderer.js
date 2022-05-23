@@ -6,29 +6,26 @@ function jsRenderScene(width, height, buffer, length, qArray, xArray, yArray, gr
     const u8buffer = new Uint8ClampedArray(buffer);
     const dySquaredArray = new Float32Array(length);
 
-    // TODO sanity checks on size.
     const dy = 2.0 / (height - 1);
     const dx = 2.0 / (width - 1);
 
     let xGridPoints = new Uint8Array(width);
-    for (let i = 0, x = -1.0; i < width; i++) {
-        if (grid > 0) {
+    let yGridPoints = new Uint8Array(height);
+
+    if (grid > 0) {
+        for (let i = 0, x = -1.0; i < width; i++) {
             const diff = Math.abs(Math.round(x / grid) * grid - x);
             xGridPoints[i] = (diff < dx) ? 1 : 0;
-        } else {
-            xGridPoints[i] = 0;
+            x += dx;
         }
-        x += dx;
-    }
-    let yGridPoints = new Uint8Array(height);
-    for (let i = 0, y = 1.0; i < height; i++) {
-        if (grid > 0) {
+        for (let i = 0, y = 1.0; i < height; i++) {
             const diff = Math.abs(Math.round(y / grid) * grid - y);
             yGridPoints[i] = (diff < dy) ? 1 : 0;
-        } else {
-            yGridPoints[i] = 0;
+            y -= dy;
         }
-        y -= dy;
+    } else {
+        xGridPoints.fill(0);
+        yGridPoints.fill(0);
     }
 
     let i = 0;

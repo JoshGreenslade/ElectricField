@@ -26,33 +26,34 @@ extern void renderScene(const int width, const int height, const int length, con
     unsigned char* xGridPoints = (unsigned char*)(dySquaredArray + length);
     unsigned char* yGridPoints = xGridPoints + width;
 
-    // TODO sanity checks on size.
     const float dy = 2.0f / (height - 1);
     const float dx = 2.0f / (width - 1);
 
-    float x = -1.0f;
-    for (int i = 0; i < width; i++) {
-        if (grid > 0.0f) {
+    if (grid > 0.0f) {
+        float x = -1.0f;
+        for (int i = 0; i < width; i++) {
             const float diff = rintf(x / grid) * grid - x;
             xGridPoints[i] = (diff < dx && diff > -dx) ? 1 : 0;
-        } else {
+            x += dx;
+        }
+
+        float y = 1.0f;
+        for (int i = 0; i < height; i++) {
+            const float diff = rintf(y / grid) * grid - y;
+            yGridPoints[i] = (diff < dy && diff > -dy) ? 1 : 0;
+            y -= dy;
+        }
+    } else {
+        for (int i = 0; i < width; i++) {
             xGridPoints[i] = 0;
         }
-        x += dx;
+
+        for (int i = 0; i < height; i++) {
+            yGridPoints[i] = 0;
+        }
     }
 
     float y = 1.0f;
-    for (int i = 0; i < height; i++) {
-        if (grid > 0) {
-            const float diff = rintf(y / grid) * grid - y;
-            yGridPoints[i] = (diff < dy && diff > -dy) ? 1 : 0;
-        } else {
-            yGridPoints[i] = 0;
-        }
-        y -= dy;
-    }
-
-    y = 1.0f;
     for (int ry = 0, i = 0; ry < height; ry++) {
 
         const int yGrid = yGridPoints[ry] != 0;
@@ -62,7 +63,7 @@ extern void renderScene(const int width, const int height, const int length, con
             dySquaredArray[j] = tmp * tmp;
         }
 
-        x = -1.0f;
+        float x = -1.0f;
         for (int rx = 0; rx < width; rx++) {
 
             if (yGrid && xGridPoints[rx] != 0) {
