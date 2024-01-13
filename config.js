@@ -12,14 +12,14 @@ export class Configuration {
 
     defaultTimeScale = 1;
     defaultReverseTime = false;
-    defaultAdaptiveTimeScale = 3000;
+    defaultAdaptiveTimeScale = 300;
     defaultMediumFriction = 0;
     defaultIntegrationSteps = 1;
     defaultIntegrationMethod = 'verlet';
     defaultParticleMass = 1;
     defaultParticleCharge = 1;
     defaultParticleGrid = 0;
-    defaultWallsElasticity = 1;
+    defaultWallsElasticity = -0.01;
     defaultShowStats = false;
 
     constructor() {
@@ -100,7 +100,7 @@ export class Configuration {
         if (typeof value !== 'number' || isNaN(value)) {
             value = defaultValue;
         }
-        if (precision) {
+        if (typeof value === 'number' && precision) {
             value = Number(value.toFixed(precision));
         }
         return Math.max(Math.min(value, maxValue), minValue);
@@ -111,7 +111,7 @@ export class Configuration {
     }
 
     set timeScale(value) {
-        this._timeScale = this.validate(value, 0.01, 10, this.defaultTimeScale, 2);
+        this._timeScale = this.validate(value, 0.01, 100, this.defaultTimeScale, 2);
     }
 
     get reverseTime() {
@@ -127,7 +127,7 @@ export class Configuration {
     }
 
     set adaptiveTimeScale(value) {
-        this._adaptiveTimeScale = this.validate(value, 0, 10000, this.defaultAdaptiveTimeScale, 0);
+        this._adaptiveTimeScale = this.validate(value, 0, 1000, this.defaultAdaptiveTimeScale, 0);
     }
 
     get mediumFriction() {
@@ -143,7 +143,7 @@ export class Configuration {
     }
 
     set wallsElasticity(value) {
-        this._wallsElasticity = this.validate(value, 0, 1, this.defaultWallsElasticity, 2);
+        this._wallsElasticity = this.validate(value, -0.01, 1, this.defaultWallsElasticity, 2);
     }
 
     get particleMass() {
@@ -151,8 +151,8 @@ export class Configuration {
     }
 
     set particleMass(value) {
-        this._particleMass = this.validate(value, 0.1, 10, this.defaultParticleMass, 3);
-        if (this._particleMass === 10) {
+        this._particleMass = this.validate(value, 0.01, 1000, this.defaultParticleMass, 3);
+        if (this._particleMass === 1000) {
             this._particleMass = Infinity;
         }
     }
@@ -162,7 +162,7 @@ export class Configuration {
     }
 
     set particleCharge(value) {
-        this._particleCharge = this.validate(value, -10, 10, this.defaultParticleCharge, 1);
+        this._particleCharge = this.validate(value, -100, 100, this.defaultParticleCharge, 1);
     }
 
     get particleGrid() {

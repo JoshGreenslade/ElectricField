@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>FPS test</title>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            border: 0;
+            padding: 0;
+            background: #eee;
+            color: #111;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            * {
+                background: #111;
+                color: #eee;
+            }
+        }
+
+        #main {
+            display: grid;
+            place-items: center;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+        }
+
+        #footnote {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            font-size: x-small;
+            padding: 0.5em;
+        }
+    </style>
+</head>
+<body>
+
+<div id="main"><div id="fps">- / - / -</div></div>
+<div id="footnote">MIN / MEDIAN / MAX frequency of <a href="https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame">requestAnimationFrame</a></div>
+
+<script>
+    const container = document.getElementById('fps');
+    const timestamps = [];
+
+    const findMedian = (x) => {
+      const l = x.length;
+      if ((l & 1) !== 0) {
+        const i = l / 2 | 0;
+        return x[i];
+      } else if (l > 0) {
+        const i = (l - 1) / 2 | 0;
+        return (x[i] + x[i+1]) / 2.0;
+      }
+    };
+
+    const showFps = (minFps, medianFps, maxFps) => {
+      minFps = new Number(minFps).toFixed(2);
+      medianFps = new Number(medianFps).toFixed(2);
+      maxFps = new Number(maxFps).toFixed(2);
+      container.textContent = `${minFps} / ${medianFps} / ${maxFps}`;
+    };
+
+    const calculateFps = (timestamps, k) => {
+      if (k == null) {
+        k = 1;
+      }
+
+      if (timestamps.length < k + 1) {
+        return;
+      }
+
+      const diffs = [];
+      timestamps.reduce((prev, curr) => {
+        diffs.push(curr - prev);
+        return curr;
+      });
+      diffs.sort();
+
+      let topSum = 0.0;
+      let bottomSum = 0.0;
+      for (let i = 0, j = diffs.length - 1; i < k;) {
+        bottomSum += diffs[i++];
+        topSum += diffs[j--];
+      }
+
+      showFps(k * 1000.0 / topSum, 1000.0 / findMedian(diffs), k * 1000.0 / bottomSum);
+    };
+
+    const frameCallback = (timestamp) => {
+      timestamps.push(timestamp);
+      if (timestamps.length >= 80) {
+        calculateFps(timestamps.splice(0, 40), 3);
+      }
+      requestAnimationFrame(frameCallback);
+    };
+
+    requestAnimationFrame(frameCallback);
+</script>
+
+</body>
+
+</html>

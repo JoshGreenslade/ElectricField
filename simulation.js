@@ -4,7 +4,8 @@ export class SimulationDispatcher {
         this.configuration = configuration;
         this.renderer = renderer;
         this.paused = true;
-        this.step = false;
+        this.busy = false;
+        this.pendingUpdate = null;
 
         this.baseCharge = 0.00001;
         this.baseSpeed = 0.01;
@@ -16,7 +17,6 @@ export class SimulationDispatcher {
             vxArray: new Float32Array(0),
             vyArray: new Float32Array(0),
         };
-        this.update = undefined;
 
         this.physicsWorker = new Worker("physics.js", {name: "physicsWorker"});
         this.physicsWorker.addEventListener('message', (e) => this.finishFrame(e.data));
@@ -38,43 +38,55 @@ export class SimulationDispatcher {
         const {particleGrid} = this.configuration;
         const grid = particleGrid > 0 ? (2.0 / particleGrid) : 0;
         this.particles = {qArray, mArray, xArray, yArray, vxArray, vyArray};
-        renderer.push({
+        renderer.queue({
             qArray, xArray, yArray, grid, physicsDuration, dt, potentialEnergy, kineticEnergy,
-        }).then(this.initFrame);
-    };
-
-    initFrame = () => {
-        if (this.update != null) {
-            this.update();
-            this.update = undefined;
-        }
-
-        const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
-        const {baseSpeed} = this;
-
-        const {
-            timeScale, reverseTime, adaptiveTimeScale, integrationMethod, integrationSteps, mediumFriction, wallsElasticity,
-        } = this.configuration;
-        const dt = (!this.paused || this.step) ? timeScale * baseSpeed : 0;
-        this.step = false;
-        this.physicsWorker.postMessage({
-            qArray,
-            mArray,
-            xArray,
-            yArray,
-            vxArray,
-            vyArray,
-            mediumFriction,
-            integrationMethod,
-            integrationSteps,
-            dt: reverseTime ? -dt : dt,
-            adaptiveTimeScale,
-            wallsElasticity,
+        }).then(() => {
+            this.busy = false;
+            if (!this.paused || this.pendingUpdate) this.initFrame();
         });
     };
 
+    initFrame = (go) => {
+        if (!this.busy) {
+            this.busy = true;
+            if (this.pendingUpdate) {
+                this.pendingUpdate();
+                this.pendingUpdate = null;
+            }
+
+            const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
+            const {baseSpeed} = this;
+
+            const {
+                timeScale,
+                reverseTime,
+                adaptiveTimeScale,
+                integrationMethod,
+                integrationSteps,
+                mediumFriction,
+                wallsElasticity,
+            } = this.configuration;
+            const dt = (go === false) ? 0.0 : (timeScale * baseSpeed);
+            this.physicsWorker.postMessage({
+                qArray,
+                mArray,
+                xArray,
+                yArray,
+                vxArray,
+                vyArray,
+                mediumFriction,
+                integrationMethod,
+                integrationSteps,
+                dt: reverseTime ? -dt : dt,
+                adaptiveTimeScale,
+                wallsElasticity,
+            });
+        }
+    };
+
     reset = () => {
-        this.update = () => {
+        this.pendingUpdate = () => {
+            this.paused = true;
             this.particles = {
                 qArray: new Float32Array(0),
                 mArray: new Float32Array(0),
@@ -84,6 +96,7 @@ export class SimulationDispatcher {
                 vyArray: new Float32Array(0),
             };
         };
+        this.initFrame(false);
     };
 
     load = (particles) => {
@@ -102,7 +115,7 @@ export class SimulationDispatcher {
             vyArray.push(vy);
         });
 
-        this.update = () => {
+        this.pendingUpdate = () => {
             this.particles = {
                 qArray: new Float32Array(qArray),
                 mArray: new Float32Array(mArray),
@@ -112,6 +125,7 @@ export class SimulationDispatcher {
                 vyArray: new Float32Array(vyArray),
             };
         };
+        this.initFrame(false);
     };
 
     save = () => {
@@ -131,7 +145,7 @@ export class SimulationDispatcher {
     };
 
     addParticle = (x, y, charge, mass) => {
-        this.update = () => {
+        this.pendingUpdate = () => {
             console.log(`Adding particle x=${x} y=${y} m=${mass} q=${charge}`);
             charge *= this.baseCharge;
             const {qArray, mArray, xArray, yArray, vxArray, vyArray} = this.particles;
@@ -144,5 +158,6 @@ export class SimulationDispatcher {
                 vyArray: Float32Array.of(...vyArray, 0),
             };
         };
+        this.initFrame(false);
     };
 }

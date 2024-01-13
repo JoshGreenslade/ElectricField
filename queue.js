@@ -31,6 +31,12 @@ export class ThreadedRenderQueue {
             limit: 1,
         });
         stats.init({
+            name: 'frames drawn',
+            calc: ({count}) => count,
+            precision: 0,
+            limit: 1,
+        });
+        stats.init({
             name: 'particles',
             calc: ({last}) => last,
             precision: 0,
@@ -58,47 +64,41 @@ export class ThreadedRenderQueue {
         stats.init({
             name: 'potential energy',
             calc: ({last}) => last,
-            precision: 4,
+            precision: 6,
             limit: 1,
         });
         stats.init({
             name: 'kinetic energy',
             calc: ({last}) => last,
-            precision: 4,
+            precision: 6,
             limit: 1,
         });
         stats.init({
             name: 'total energy',
             calc: ({last}) => last,
-            precision: 4,
+            precision: 6,
             limit: 1,
         });
         stats.particles = 0;
 
         // Workers can return results out of order, we stamp the tasks with increasing IDs,
         // so we can put them back in order.
-        this.nextPushId = 0;
-        this.nextPullId = 0;
-        this.tasks = [];
+        this.nextPushId = 0 | 0;
+        this.nextPullId = 0 | 0;
         this.buffers = [];
 
         this.idleWorkers = new Map();
         for (let i = 0; i < this.size; i++) {
-            const [name, worker] = this.prepareWorker(i);
+            const name = `renderWorker${i}`;
+            const worker = new Worker('renderer.js', {name});
+            worker.addEventListener('message', (e) => this.collectTask(name, worker, e.data));
             this.idleWorkers.set(name, worker);
-            this.buffers.push(new ArrayBuffer(0));
             this.buffers.push(new ArrayBuffer(0));
         }
         this.busyWorkers = new Map();
         this.resultsBuffer = new Map();
+        this.pendingTask = null;
     }
-
-    prepareWorker = (i) => {
-        const name = `renderWorker${i}`;
-        const worker = new Worker('renderer.js', {name});
-        worker.addEventListener('message', (e) => this.collectTask(name, worker, e.data));
-        return [name, worker];
-    };
 
     collectTask = (workerName, worker, result) => {
         this.busyWorkers.delete(workerName);
@@ -107,39 +107,67 @@ export class ThreadedRenderQueue {
         this.tick();
     };
 
-    push = (task) => {
-        task.taskId = this.nextPushId++;
+    queue = (task) => {
+        task.taskId = this.nextPushId;
+        this.nextPushId = (this.nextPushId + 1) & 0xffffffff;
 
-        return new Promise((resolve) => {
-            this.tasks.push(() => {
+        if (this.buffers.length > 0) {
+            this.push(task);
+            return new Promise((resolve) => {
                 resolve();
-                return task;
+                this.tick();
             });
-            this.tick();
-        });
+        }
+
+        if (this.pendingTask == null) {
+            return new Promise((resolve) => {
+                this.pendingTask = () => {
+                    resolve();
+                    return task;
+                };
+                this.tick();
+            });
+        }
+    };
+
+    push = (task) => {
+        const {idleWorkers, busyWorkers, useWasm} = this;
+        const {width, height} = this.canvas;
+
+        for (const [workerName, worker] of idleWorkers) {
+            task.buffer = this.buffers.shift();
+            task.width = width;
+            task.height = height;
+            task.useWasm = useWasm;
+            idleWorkers.delete(workerName);
+            busyWorkers.set(workerName, worker);
+            worker.postMessage(task, [task.buffer]);
+            break;
+        }
     };
 
     render = (timestamp, {
         qArray, buffer, width, height, renderDuration, physicsDuration, dt, potentialEnergy, kineticEnergy,
     }) => {
-        this.nextPullId++;
+        this.nextPullId = (this.nextPullId + 1) & 0xffffffff;
         const {canvas, stats} = this;
         const {width: canvasWidth, height: canvasHeight, clientWidth, clientHeight} = canvas;
 
         if (this.lastTimestamp != null) {
             stats.fps = timestamp - this.lastTimestamp;
         }
-        stats.renderLoad = 100.0 * this.busyWorkers.size / this.size;
+        // +1 in order to account for the frame that's being rendered in here
+        stats.renderLoad = 100.0 * (this.size - this.buffers.length) / this.size;
         stats.renderDuration = renderDuration;
         stats.renderThreads = this.size
         stats.physicsDuration = physicsDuration;
         stats.simulationTime = dt;
+        stats.framesDrawn += 1;
         stats.particles = qArray.length;
         stats.potentialEnergy = potentialEnergy;
         stats.kineticEnergy = kineticEnergy;
         stats.totalEnergy = potentialEnergy + kineticEnergy;
         this.lastTimestamp = timestamp;
-
         if (width === canvasWidth && height === canvasHeight) {
             const u8buffer = new Uint8ClampedArray(buffer);
             const imageData = new ImageData(u8buffer, width, height);
@@ -156,7 +184,7 @@ export class ThreadedRenderQueue {
     };
 
     tick = () => {
-        const {buffers, tasks, resultsBuffer, idleWorkers, busyWorkers, useWasm} = this;
+        const {resultsBuffer, buffers} = this;
 
         if (resultsBuffer.has(this.nextPullId)) {
             const result = resultsBuffer.get(this.nextPullId);
@@ -164,24 +192,9 @@ export class ThreadedRenderQueue {
             requestAnimationFrame((timestamp) => this.render(timestamp, result));
         }
 
-        if (tasks.length > 0 && buffers.length > 0 && idleWorkers.size > 0) {
-            const {width, height} = this.canvas;
-
-            for (const [workerName, worker] of idleWorkers) {
-                const produce = tasks.shift();
-                const task = produce();
-                const buffer = buffers.shift();
-                task.buffer = buffer;
-                task.width = width;
-                task.height = height;
-                task.useWasm = useWasm;
-                worker.postMessage(task, [buffer]);
-                idleWorkers.delete(workerName);
-                busyWorkers.set(workerName, worker);
-                if (tasks.length <= 0 || buffer.length <= 0) {
-                    break;
-                }
-            }
+        if (buffers.length && this.pendingTask) {
+            this.push(this.pendingTask());
+            this.pendingTask = null;
         }
     };
 }

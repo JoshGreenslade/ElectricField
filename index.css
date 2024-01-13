@@ -4,6 +4,8 @@
     margin: 0;
     padding: 0;
     border: 0;
+    color: #101010;
+    background: #f0f0f0;
 }
 
 html, body {
@@ -14,6 +16,11 @@ html, body {
 
 h1, h2, h3, h4 {
     text-align: center;
+}
+
+a, a:visited {
+    color: #101010;
+    text-decoration: none;
 }
 
 .page-container {
@@ -68,20 +75,26 @@ canvas {
     font-size: smaller;
     bottom: 0.2em;
     left: 0.5em;
-    background: #e0e0e0;
+    background: #c0c0c0;
     min-width: 15em;
     display: flex;
     flex-direction: column;
 }
 
+.stats-table {
+    background: #c0c0c0;
+}
+
 .stats-table .name {
     text-align: right;
     padding-right: 0.5em;
+    background: #c0c0c0;
 }
 
 .stats-table .value {
     width: 5em;
     text-align: left;
+    background: #c0c0c0;
 }
 
 .stats-container.hidden .stats-table {
@@ -93,7 +106,7 @@ input[type=button].stats-close {
     min-height: 1.5em;
 }
 
-@media (min-width: 600px) {
+@media (min-width: 650px) {
     .page-container {
         width: 95%;
     }
@@ -145,7 +158,7 @@ button, input[type=button] {
     width: 7em;
     min-height: 2.5em;
     cursor: pointer;
-    background: #e0e0e0;
+    background: #c0c0c0;
 }
 
 input[type=range] {
@@ -159,5 +172,21 @@ header {
 
 footer {
     font-size: x-small;
-    text-align: center;
+    text-align: right;
+    padding: 0.5em;
+}
+
+@media (prefers-color-scheme: dark) {
+    * {
+        color: #f0f0f0;
+        background: #101010;
+    }
+
+    button, input[type=button], .stats-table, .stats-table .name, .stats-table .value {
+        background: #303030;
+    }
+
+    a, a:visited {
+        color: #f0f0f0;
+    }
 }

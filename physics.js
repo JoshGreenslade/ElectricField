@@ -1,5 +1,6 @@
 const ke = 8.987551e9
-const smallestPassingDistanceSquared = 0.00003;
+const smallestPassingDistance = 0.001;
+const smallestPassingDistanceSquared = smallestPassingDistance * smallestPassingDistance;
 
 
 const prepareBuffers = (particleNumber, buffersNumber) => {
@@ -31,17 +32,18 @@ const findForces = (
         let fy = 0.0;
 
         for (let j = 0; j < particleNumber; j++) {
+            if (j === i) {
+                continue;
+            }
             const dx = x - xArray[j];
             const dy = y - yArray[j];
             const dx2 = dx * dx;
             const dy2 = dy * dy;
-            const r2 = dx2 + dy2;
+            const r2 = Math.max(dx2 + dy2, smallestPassingDistanceSquared);
 
-            if (r2 >= smallestPassingDistanceSquared) {
-                const tmp = qArray[j] / r2 / Math.sqrt(r2);
-                fx += dx * tmp;
-                fy += dy * tmp;
-            }
+            const tmp = qArray[j] / r2 / Math.sqrt(r2);
+            fx += dx * tmp;
+            fy += dy * tmp;
         }
 
         fxArray[i] = fx;
@@ -102,6 +104,40 @@ const applyForces = (
 };
 
 
+const clampPositions = (
+  particleNumber,
+  mArray,
+  xArray,
+  yArray,
+  vxArray,
+  vyArray,
+) => {
+    for (let i = 0; i < particleNumber; i++) {
+        const m = mArray[i];
+
+        if (m !== Infinity) {
+            const x = xArray[i];
+            if (x > 1e300) {
+                xArray[i] = 1e300;
+                vxArray[i] = 0.0;
+            } else if (x < -1e300) {
+                xArray[i] = -1e300;
+                vxArray[i] = 0.0;
+            }
+
+            const y = yArray[i];
+            if (y >= 1e300) {
+                yArray[i] = 1e300;
+                vyArray[i] = 0.0;
+            } else if (y < -1e300) {
+                yArray[i] = -1e300;
+                vyArray[i] = 0.0;
+            }
+        }
+    }
+};
+
+
 const bounceOffWalls = (
     particleNumber,
     mArray,
@@ -111,6 +147,10 @@ const bounceOffWalls = (
     vyArray,
     wallsElasticity,
 ) => {
+    if (wallsElasticity == null || wallsElasticity < 0) {
+        return clampPositions(particleNumber, mArray, xArray, yArray, vxArray, vyArray);
+    }
+
     wallsElasticity = -wallsElasticity;
 
     for (let i = 0; i < particleNumber; i++) {
@@ -809,7 +849,6 @@ onmessage = ({data}) => {
     } = data;
     let {integrationSteps} = data;
     const particleNumber = mArray.length;
-
     const timestamp = performance.now();
     if (dt !== 0) {
         let callback = callbacks[integrationMethod] || euler;
@@ -844,7 +883,6 @@ onmessage = ({data}) => {
 
     data.potentialEnergy = findPotentialEnergy(particleNumber, data.qArray, data.xArray, data.yArray);
     data.kineticEnergy = findKineticEnergy(particleNumber, data.mArray, data.vxArray, data.vyArray);
-
     data.physicsDuration = performance.now() - timestamp;
 
     postMessage(data);

@@ -52,9 +52,8 @@ window.addEventListener('load', () => {
 
   canvas.addEventListener('mousedown', (e) => {
     const {x, y} = getMousePosition(canvas, e);
-    const particleCharge = (e.button !== 0) ? -configuration.particleCharge : configuration.particleCharge;
-    if (particleCharge !== 0) {
-      simulation.addParticle(x, y, particleCharge, configuration.particleMass);
+    if (configuration.particleCharge !== 0) {
+      simulation.addParticle(x, y, configuration.particleCharge, configuration.particleMass);
     }
     e.preventDefault();
   });
@@ -94,7 +93,10 @@ window.addEventListener('load', () => {
   });
   configuration.bind({
     id: 'particle-grid',
-    toValue: (elem) => parseFloat(elem.value) * 2,
+    toValue: (elem) => {
+      simulation.initFrame(false);
+      return parseFloat(elem.value) * 2;
+    },
     toOutput: (elem, particleGrid) => elem.value = (particleGrid > 0 ? `${particleGrid}x${particleGrid}` : 'off'),
     toInput: (elem, particleGrid) => elem.value = particleGrid / 2,
   });
@@ -102,7 +104,7 @@ window.addEventListener('load', () => {
     id: 'particle-mass',
     toValue: (elem) => {
       const particleMass = Math.pow(10, parseFloat(elem.value));
-      return particleMass >= 10 ? Infinity : particleMass;
+      return particleMass >= 1000 ? Infinity : particleMass;
     },
     toInput: (elem, particleMass) => elem.value = (particleMass === Infinity ? 10 : Math.log10(particleMass)),
   });
@@ -113,6 +115,7 @@ window.addEventListener('load', () => {
   });
   configuration.bind({
     id: 'walls-elasticity',
+    toOutput: (elem, wallsElasticity) => elem.value = (wallsElasticity >= 0 ? wallsElasticity : 'no walls'),
   });
   configuration.bind({
     id: 'reverse-time',
@@ -149,14 +152,15 @@ window.addEventListener('load', () => {
   pauseButton.addEventListener('click', (e) => {
     simulation.paused = !simulation.paused;
     pauseButton.textContent = simulation.paused ? "Run" : "Pause";
+    simulation.initFrame(!simulation.paused);
   });
   pauseButton.textContent = simulation.paused ? "Run" : "Pause";
 
   const stepButton = document.getElementById("step");
   stepButton.addEventListener('click', (e) => {
     simulation.paused = true;
-    simulation.step = true;
     pauseButton.textContent = "Run";
+    simulation.initFrame();
   });
 
   const resetButton = document.getElementById("reset");
@@ -165,7 +169,6 @@ window.addEventListener('load', () => {
     simulation.reset();
     stats.reset();
     simulation.paused = true;
-    simulation.step = false;
     pauseButton.textContent = "Run";
   });
 
@@ -202,5 +205,5 @@ window.addEventListener('load', () => {
     fileInput.click();
   });
 
-  simulation.initFrame();
+  simulation.initFrame(false);
 });

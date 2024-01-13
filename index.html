@@ -13,9 +13,7 @@
     <h1>Electric Field Simulator</h1>
 
     <header>
-        Left click to create a positive charge.
-        Right click to create a negative charge.
-        Click Run / Pause.
+        Click to add charges as defined by tunables. Then Run / Pause.
     </header>
 
     <div class="main-container">
@@ -36,12 +34,12 @@
                 <tbody>
                 <tr>
                     <td class="label">Time scale:</td>
-                    <td class="input"><input type="range" min="-2" max="1" step="0.01" id="time-scale-input"></td>
+                    <td class="input"><input type="range" min="-2" max="2" step="0.1" id="time-scale-input"></td>
                     <td class="output"><output id=time-scale-output></output></td>
                 </tr>
                 <tr>
                     <td class="label">Adaptive time scaling:</td>
-                    <td class="input"><input type="range" min="0" max="10000" step="1" id="adaptive-time-scale-input"></td>
+                    <td class="input"><input type="range" min="0" max="1000" step="1" id="adaptive-time-scale-input"></td>
                     <td class="output"><output id=adaptive-time-scale-output></output></td>
                 </tr>
                 <tr>
@@ -61,17 +59,17 @@
                 </tr>
                 <tr>
                     <td class="label">Elasticity of walls:</td>
-                    <td class="input"><input type="range" min="0" max="1" step="0.01" id="walls-elasticity-input"></td>
+                    <td class="input"><input type="range" min="-0.01" max="1" step="0.01" id="walls-elasticity-input"></td>
                     <td class="output"><output id=walls-elasticity-output></output></td>
                 </tr>
                 <tr>
                     <td class="label">Charge of new particles:</td>
-                    <td class="input"><input type="range" min="-10" max="10" step=".1" id="particle-charge-input"></td>
+                    <td class="input"><input type="range" min="-100" max="100" step=".1" id="particle-charge-input"></td>
                     <td class="output"><output id=particle-charge-output></output></td>
                 </tr>
                 <tr>
                     <td class="label">Mass of new particles:</td>
-                    <td class="input"><input type="range" min="-1" max="1" step="0.01" value="0" id="particle-mass-input"></td>
+                    <td class="input"><input type="range" min="-2" max="3" step="0.01" value="0" id="particle-mass-input"></td>
                     <td class="output"><output id=particle-mass-output></output></td>
                 </tr>
                 <tr>

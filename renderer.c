@@ -1,126 +1,122 @@
 
 
 /*
-  apt install clang wabt lld binaryen
+  apt install clang lld wabt binaryen
 
-  clang --target=wasm32 --optimize=4 -nostdlib \
-    -Wl,--export-all -Wl,--no-entry -Wl,--allow-undefined -Wall \
-    --output renderer.wasm renderer.c
+  Annoyingly, clang-15 produces code that doesn't work as expected. Clang-13 and 14 seem ok.
+
+  clang-14 -O3 -fno-builtin-memset -ffast-math --target=wasm32 -msimd128 \
+    -nostdlib -Wl,--export-all -Wl,--no-entry -Wl,--allow-undefined \
+    -Wall --output renderer.wasm renderer.c
 */
+
+
+#include <wasm_simd128.h>
 
 
 // Clang will use f32.nearest for this.
 extern float rintf(float);
+extern float nearbyintf(float);
 
 
-#define k 10000.0f
-#define smallestPassingDistanceSquared 0.000003f
+#define k 30000.0f
+#define minDistanceSquared 0.000001f
 
 
-extern void renderScene(const int width, const int height, const int length, const float grid, unsigned char* buffer)
-{
-    float* qArray = (float*)(buffer + width * height * sizeof(unsigned int));
+static __inline__ v128_t* v128_pointer(const void *__mem) {
+  struct __coerce_to_v128_t_struct {
+    __v128_u __v;
+  } __attribute__((__packed__, __may_alias__));
+  return (v128_t*)(&(((struct __coerce_to_v128_t_struct *)__mem)->__v));
+}
+
+
+extern void renderScene(const int length, const int width, const int height, const float grid) {
+    const int simdLength = length >> 2;
+    float* qArray = (float*)0;
+    const v128_t* qArray128 = v128_pointer(qArray);
     float* xArray = qArray + length;
+    const v128_t* xArray128 = v128_pointer(xArray);
     float* yArray = xArray + length;
+    const v128_t* yArray128 = v128_pointer(yArray);
     float* dySquaredArray = yArray + length;
-    unsigned char* xGridPoints = (unsigned char*)(dySquaredArray + length);
-    unsigned char* yGridPoints = xGridPoints + width;
+    v128_t* dySquaredArray128 = v128_pointer(dySquaredArray);
+    int* scene = (int*)(dySquaredArray + length);
 
     const float dy = 2.0f / (height - 1);
     const float dx = 2.0f / (width - 1);
+    float x, y;
 
-    if (grid > 0.0f) {
-        float x = -1.0f;
-        for (int i = 0; i < width; i++) {
-            const float diff = rintf(x / grid) * grid - x;
-            xGridPoints[i] = (diff < dx && diff > -dx) ? 1 : 0;
-            x += dx;
+    const v128_t minDistanceSquared128 = wasm_f32x4_splat(minDistanceSquared);
+    const v128_t zero128 = wasm_f32x4_splat(0.0f);
+    const v128_t ffff128 = wasm_f32x4_splat(65535.0f);
+
+    int i = 0;
+    y = 1.0f;
+    for (int ry = 0; ry < height; ry++) {
+        const v128_t y128 = wasm_f32x4_splat(y);
+        for (int l = 0; l < simdLength; l++) {
+            v128_t tmp = wasm_f32x4_sub(yArray128[l], y128);
+            dySquaredArray128[l] = wasm_f32x4_mul(tmp, tmp);
         }
 
-        float y = 1.0f;
-        for (int i = 0; i < height; i++) {
-            const float diff = rintf(y / grid) * grid - y;
-            yGridPoints[i] = (diff < dy && diff > -dy) ? 1 : 0;
-            y -= dy;
-        }
-    } else {
-        for (int i = 0; i < width; i++) {
-            xGridPoints[i] = 0;
-        }
-
-        for (int i = 0; i < height; i++) {
-            yGridPoints[i] = 0;
-        }
-    }
-
-    float y = 1.0f;
-    for (int ry = 0, i = 0; ry < height; ry++) {
-
-        const int yGrid = yGridPoints[ry] != 0;
-
-        for (int j = 0; j < length; j++) {
-            const float tmp = y - yArray[j];
-            dySquaredArray[j] = tmp * tmp;
-        }
-
-        float x = -1.0f;
+        x = -1.0f;
         for (int rx = 0; rx < width; rx++) {
-
-            if (yGrid && xGridPoints[rx] != 0) {
-                buffer[i + 0] = 255;
-                buffer[i + 1] = 255;
-                buffer[i + 2] = 255;
-                buffer[i + 3] = 255;
-            } else {
-                float strength = 0.0f;
-                for (int l = 0; l < length; l++) {
-                    const float r = x - xArray[l];
-                    const float r2 = r * r + dySquaredArray[l];
-                    if (r2 > smallestPassingDistanceSquared) {
-                        strength += k * qArray[l] / r2;
-                    } else {
-                        strength += k * qArray[l] / smallestPassingDistanceSquared;
-                    }
-                }
-
-                // Pixel color for the field strength.
-                float red = strength;
-                if (red > 255.0f) {
-                    red = 255.0f;
-                } else if (red < 0.0f) {
-                    red = 0.0f;
-                }
-
-                float green = strength / 15;
-                if (green < 0.0f) {
-                    if (green < -255.0f) {
-                        green = 255.0f;
-                    } else {
-                        green = -green;
-                    }
-                } else {
-                    if (green > 255.0f) {
-                        green = 255.0f;
-                    }
-                }
-
-                float blue = -strength;
-                if (blue > 255.0f) {
-                    blue = 255.0f;
-                } else if (blue < 0.0f) {
-                    blue = 0.0f;
-                }
-
-                buffer[i + 0] = (unsigned char)red;
-                buffer[i + 1] = (unsigned char)green;
-                buffer[i + 2] = (unsigned char)blue;
-                buffer[i + 3] = 255; // Alpha
+            v128_t acc = wasm_f32x4_splat(0.0f);
+            const v128_t x128 = wasm_f32x4_splat(x);
+            for (int l = 0; l < simdLength; l++) {
+                v128_t tmp = wasm_f32x4_sub(xArray128[l], x128);
+                tmp = wasm_f32x4_mul(tmp, tmp);
+                tmp = wasm_f32x4_add(tmp, dySquaredArray128[l]);
+                tmp = wasm_f32x4_max(tmp, minDistanceSquared128);
+                tmp = wasm_f32x4_div(qArray128[l], tmp);
+                acc = wasm_f32x4_add(acc, tmp);
             }
+            const float strength = k * (
+                wasm_f32x4_extract_lane(acc, 0)
+                + wasm_f32x4_extract_lane(acc, 1)
+                + wasm_f32x4_extract_lane(acc, 2)
+                + wasm_f32x4_extract_lane(acc, 3)
+            );
 
-            i += 4;
+            v128_t tmp = wasm_f32x4_mul(wasm_f32x4_splat(strength), wasm_f32x4_const(1.0f, -1.0f, 0.0f, 0.0f));
+            tmp = wasm_f32x4_min(tmp, ffff128);
+            tmp = wasm_f32x4_max(tmp, zero128);
+            tmp = wasm_f32x4_sqrt(tmp);
+            tmp = wasm_f32x4_add(tmp, wasm_f32x4_const(0.0f, 0.0f, 0.0f, 255.0f));
+            tmp = wasm_i32x4_trunc_sat_f32x4(tmp);
+
+            v128_t rgb = wasm_i8x16_splat((unsigned char)wasm_i32x4_extract_lane(tmp, 0));
+            rgb = wasm_i8x16_replace_lane(rgb, 1, (unsigned char)wasm_i32x4_extract_lane(tmp, 1));
+            rgb = wasm_i8x16_replace_lane(rgb, 2, (unsigned char)wasm_i32x4_extract_lane(tmp, 2));
+            rgb = wasm_i8x16_replace_lane(rgb, 3, (unsigned char)wasm_i32x4_extract_lane(tmp, 3));
+            scene[i++] = wasm_i32x4_extract_lane(rgb, 0);
+
             x += dx;
         }
 
         y -= dy;
+    }
+
+    if (grid > 0.0f) {
+        float x = -1.0f;
+        for (int i = 0; i < width; i++, x += dx) {
+            const float diff = nearbyintf(x / grid) * grid - x;
+            if (diff <= dx && diff >= -dx) {
+                for (int j = 0, l = i; j < height; j++, l+=width) {
+                    scene[l] = 0xa0a0a0a0;
+                }
+            }
+        }
+
+        float y = 1.0f;
+        for (int i = 0; i < height; i++, y -= dy) {
+            const float diff = nearbyintf(y / grid) * grid - y;
+            if (diff <= dy && diff >= -dy) {
+                for (int j = 0, l = i*width; j < width; j++) {
+                    scene[l++] = 0xa0a0a0a0;
+                }
+            }
+        }
     }
 }
